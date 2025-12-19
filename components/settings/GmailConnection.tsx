@@ -15,7 +15,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Plus } from "lucide-react";
+import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Settings2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface GmailConnectionProps {
   userId: string;
@@ -26,13 +36,32 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   const { data: status, isLoading, refetch } = useGmailStatus(userId);
   const disconnectGmail = useDisconnectGmail();
 
-  // Optional permissions state
+  // Permission management state
   const [wantLabels, setWantLabels] = useState(false);
   const [wantModify, setWantModify] = useState(false);
-  const [showAddPermissions, setShowAddPermissions] = useState(false);
+  const [showManagePermissions, setShowManagePermissions] = useState(false);
+  const [showReauthDialog, setShowReauthDialog] = useState(false);
+  const [pendingPermissions, setPendingPermissions] = useState<{ labels: boolean; modify: boolean } | null>(null);
 
-  // Check if there are permissions that can still be added
-  const canAddMorePermissions = status?.connected && (!status.can_manage_labels || !status.can_modify);
+  // Initialize permission state from current status
+  useEffect(() => {
+    if (status?.connected) {
+      setWantLabels(status.can_manage_labels);
+      setWantModify(status.can_modify);
+    }
+  }, [status?.connected, status?.can_manage_labels, status?.can_modify]);
+
+  // Check if permissions have changed
+  const hasPermissionChanges = status?.connected && (
+    wantLabels !== status.can_manage_labels ||
+    wantModify !== status.can_modify
+  );
+
+  // Check if we're removing permissions (requires re-auth)
+  const isRemovingPermissions = status?.connected && (
+    (!wantLabels && status.can_manage_labels) ||
+    (!wantModify && status.can_modify)
+  );
 
   // Handle OAuth callback params
   useEffect(() => {
@@ -65,12 +94,45 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
     });
   };
 
-  const handleAddPermissions = () => {
-    // Request additional permissions (Google will merge with existing)
-    window.location.href = usersApi.getGmailConnectUrl(userId, {
-      labels: wantLabels || status?.can_manage_labels,
-      modify: wantModify || status?.can_modify,
-    });
+  const handleUpdatePermissions = () => {
+    if (isRemovingPermissions) {
+      // Show confirmation dialog for removing permissions
+      setPendingPermissions({ labels: wantLabels, modify: wantModify });
+      setShowReauthDialog(true);
+    } else {
+      // Just adding permissions - redirect directly
+      window.location.href = usersApi.getGmailConnectUrl(userId, {
+        labels: wantLabels,
+        modify: wantModify,
+      });
+    }
+  };
+
+  const handleConfirmReauth = async () => {
+    if (!pendingPermissions) return;
+
+    // Disconnect first, then reconnect with new permissions
+    try {
+      await disconnectGmail.mutateAsync(userId);
+      // Redirect to OAuth with new permissions
+      window.location.href = usersApi.getGmailConnectUrl(userId, {
+        labels: pendingPermissions.labels,
+        modify: pendingPermissions.modify,
+      });
+    } catch (error) {
+      console.error("Failed to update permissions:", error);
+      setShowReauthDialog(false);
+      setPendingPermissions(null);
+    }
+  };
+
+  const handleCancelManage = () => {
+    // Reset to current permissions
+    if (status) {
+      setWantLabels(status.can_manage_labels);
+      setWantModify(status.can_modify);
+    }
+    setShowManagePermissions(false);
   };
 
   const handleDisconnect = async () => {
@@ -145,84 +207,108 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
               </p>
             )}
 
-            {/* Add more permissions section */}
-            {canAddMorePermissions && (
-              <div className="space-y-3">
-                {!showAddPermissions ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowAddPermissions(true)}
-                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-0 h-auto"
-                  >
-                    <Plus className="mr-1 h-3 w-3" />
-                    Add more permissions
-                  </Button>
-                ) : (
-                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
-                    <p className="text-sm font-medium">Request additional permissions:</p>
+            {/* Manage permissions section */}
+            <div className="space-y-3">
+              {!showManagePermissions ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowManagePermissions(true)}
+                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-0 h-auto"
+                >
+                  <Settings2 className="mr-1 h-3 w-3" />
+                  Manage permissions
+                </Button>
+              ) : (
+                <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                  <p className="text-sm font-medium">Manage Gmail permissions:</p>
 
-                    {!status.can_manage_labels && (
-                      <div className="flex items-start space-x-3">
-                        <Checkbox
-                          id="add-labels"
-                          checked={wantLabels}
-                          onCheckedChange={(checked) => setWantLabels(checked === true)}
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                          <Label htmlFor="add-labels" className="text-sm font-medium">
-                            Manage labels
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Create and apply labels to organize job emails
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {!status.can_modify && (
-                      <div className="flex items-start space-x-3">
-                        <Checkbox
-                          id="add-modify"
-                          checked={wantModify}
-                          onCheckedChange={(checked) => setWantModify(checked === true)}
-                        />
-                        <div className="grid gap-1.5 leading-none">
-                          <Label htmlFor="add-modify" className="text-sm font-medium">
-                            Mark as read
-                          </Label>
-                          <p className="text-xs text-muted-foreground">
-                            Automatically mark processed job alerts as read
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        size="sm"
-                        onClick={handleAddPermissions}
-                        disabled={!wantLabels && !wantModify}
-                      >
-                        <ExternalLink className="mr-1 h-3 w-3" />
-                        Request permissions
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setShowAddPermissions(false);
-                          setWantLabels(false);
-                          setWantModify(false);
-                        }}
-                      >
-                        Cancel
-                      </Button>
+                  {/* Read emails - always required */}
+                  <div className="flex items-start space-x-3 opacity-60">
+                    <Checkbox id="manage-read" checked disabled />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="manage-read" className="text-sm font-medium">
+                        Read emails (required)
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Scan your inbox for job alert emails
+                      </p>
                     </div>
                   </div>
-                )}
-              </div>
-            )}
+
+                  {/* Manage labels */}
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="manage-labels"
+                      checked={wantLabels}
+                      onCheckedChange={(checked) => setWantLabels(checked === true)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="manage-labels" className="text-sm font-medium">
+                        Manage labels
+                        {status.can_manage_labels && !wantLabels && (
+                          <span className="ml-2 text-xs text-orange-600">(will be removed)</span>
+                        )}
+                        {!status.can_manage_labels && wantLabels && (
+                          <span className="ml-2 text-xs text-green-600">(will be added)</span>
+                        )}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Create and apply labels to organize job emails
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Mark as read */}
+                  <div className="flex items-start space-x-3">
+                    <Checkbox
+                      id="manage-modify"
+                      checked={wantModify}
+                      onCheckedChange={(checked) => setWantModify(checked === true)}
+                    />
+                    <div className="grid gap-1.5 leading-none">
+                      <Label htmlFor="manage-modify" className="text-sm font-medium">
+                        Mark as read
+                        {status.can_modify && !wantModify && (
+                          <span className="ml-2 text-xs text-orange-600">(will be removed)</span>
+                        )}
+                        {!status.can_modify && wantModify && (
+                          <span className="ml-2 text-xs text-green-600">(will be added)</span>
+                        )}
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically mark processed job alerts as read
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Warning when removing permissions */}
+                  {isRemovingPermissions && (
+                    <p className="text-xs text-orange-600 bg-orange-50 dark:bg-orange-950 p-2 rounded">
+                      Removing permissions requires re-authentication with Google.
+                    </p>
+                  )}
+
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      size="sm"
+                      onClick={handleUpdatePermissions}
+                      disabled={!hasPermissionChanges}
+                    >
+                      <ExternalLink className="mr-1 h-3 w-3" />
+                      {isRemovingPermissions ? "Update & Re-authenticate" : "Update permissions"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleCancelManage}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             <Button
               variant="outline"
@@ -308,11 +394,35 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
             </Button>
 
             <p className="text-xs text-muted-foreground">
-              You can change these permissions later by reconnecting.
+              You can manage these permissions after connecting.
             </p>
           </div>
         )}
       </CardContent>
+
+      {/* Re-authentication confirmation dialog */}
+      <AlertDialog open={showReauthDialog} onOpenChange={setShowReauthDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-authentication Required</AlertDialogTitle>
+            <AlertDialogDescription>
+              Removing Gmail permissions requires disconnecting and reconnecting your account.
+              You will be redirected to Google to re-authorize with the new permissions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowReauthDialog(false);
+              setPendingPermissions(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmReauth}>
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
