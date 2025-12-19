@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { ArrowLeft, Save } from "lucide-react";
 import { EmailSendersSettings } from "@/components/settings/EmailSendersSettings";
+import { GmailConnection } from "@/components/settings/GmailConnection";
 import type { UserUpdate } from "@/types/user";
 
 // TODO: Replace with actual user ID from auth
@@ -277,6 +278,9 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Gmail Connection */}
+        <GmailConnection userId={TEMP_USER_ID} />
 
         {/* Email Alert Sources */}
         <EmailSendersSettings userId={TEMP_USER_ID} />

@@ -64,3 +64,24 @@ export function useUpdateEmailSenders() {
     },
   });
 }
+
+// Gmail connection hooks
+export function useGmailStatus(userId: string) {
+  return useQuery({
+    queryKey: ["gmail", userId, "status"],
+    queryFn: () => usersApi.getGmailStatus(userId),
+    enabled: !!userId,
+    refetchOnWindowFocus: true, // Refetch when user returns from OAuth
+  });
+}
+
+export function useDisconnectGmail() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => usersApi.disconnectGmail(userId),
+    onSuccess: (_, userId) => {
+      queryClient.invalidateQueries({ queryKey: ["gmail", userId, "status"] });
+    },
+  });
+}
