@@ -6,11 +6,26 @@ import Credentials from "next-auth/providers/credentials"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+// Gmail scopes to request when signing in with Google
+const GMAIL_SCOPES = [
+  "openid",
+  "email",
+  "profile",
+  "https://www.googleapis.com/auth/gmail.readonly",
+]
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID!,
       clientSecret: process.env.AUTH_GOOGLE_SECRET!,
+      authorization: {
+        params: {
+          scope: GMAIL_SCOPES.join(" "),
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
     }),
     LinkedIn({
       clientId: process.env.AUTH_LINKEDIN_ID!,
@@ -68,25 +83,71 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user, account }) {
       // Initial sign in
       if (account && user) {
-        // For OAuth providers, exchange the token with backend
-        if (account.provider !== "credentials") {
+        // For Google OAuth, also set up Gmail access with the same tokens
+        if (account.provider === "google" && account.access_token) {
           try {
-            // The backend will handle OAuth token exchange
-            // For now, we store the OAuth tokens
-            return {
-              ...token,
-              accessToken: account.access_token,
-              refreshToken: account.refresh_token,
-              provider: account.provider,
-              user: {
-                id: user.id,
+            // Register user and store Gmail tokens in the backend
+            const response = await fetch(`${API_URL}/api/auth/google-login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
                 email: user.email,
                 name: user.name,
                 image: user.image,
-              },
+                access_token: account.access_token,
+                refresh_token: account.refresh_token,
+                expires_at: account.expires_at,
+                scope: account.scope,
+              }),
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              return {
+                ...token,
+                accessToken: account.access_token,
+                refreshToken: account.refresh_token,
+                provider: account.provider,
+                user: {
+                  id: data.user_id,
+                  email: user.email,
+                  name: user.name,
+                  image: user.image,
+                },
+              }
             }
           } catch (error) {
-            console.error("Token exchange error:", error)
+            console.error("Google login backend error:", error)
+          }
+
+          // Fallback if backend call fails
+          return {
+            ...token,
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token,
+            provider: account.provider,
+            user: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+            },
+          }
+        }
+
+        // For other OAuth providers
+        if (account.provider !== "credentials") {
+          return {
+            ...token,
+            accessToken: account.access_token,
+            refreshToken: account.refresh_token,
+            provider: account.provider,
+            user: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              image: user.image,
+            },
           }
         }
 
