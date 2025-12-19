@@ -11,6 +11,13 @@ export interface GmailStatus {
   connected: boolean;
   email: string | null;
   last_sync_at: string | null;
+  can_manage_labels: boolean;
+  can_modify: boolean;
+}
+
+export interface GmailConnectOptions {
+  labels?: boolean;
+  modify?: boolean;
 }
 
 export const usersApi = {
@@ -58,9 +65,13 @@ export const usersApi = {
     return apiClient<GmailStatus>(`/api/gmail/status/${userId}`);
   },
 
-  getGmailConnectUrl: (userId: string): string => {
+  getGmailConnectUrl: (userId: string, options?: GmailConnectOptions): string => {
     const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-    return `${baseUrl}/api/gmail/connect/${userId}`;
+    const params = new URLSearchParams();
+    if (options?.labels) params.set("labels", "true");
+    if (options?.modify) params.set("modify", "true");
+    const queryString = params.toString();
+    return `${baseUrl}/api/gmail/connect/${userId}${queryString ? `?${queryString}` : ""}`;
   },
 
   disconnectGmail: async (userId: string): Promise<{ success: boolean; message: string }> => {

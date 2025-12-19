@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useGmailStatus, useDisconnectGmail } from "@/lib/hooks/useUser";
 import { usersApi } from "@/lib/api/users";
@@ -13,7 +13,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck } from "lucide-react";
 
 interface GmailConnectionProps {
   userId: string;
@@ -23,6 +25,10 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   const searchParams = useSearchParams();
   const { data: status, isLoading, refetch } = useGmailStatus(userId);
   const disconnectGmail = useDisconnectGmail();
+
+  // Optional permissions state
+  const [wantLabels, setWantLabels] = useState(false);
+  const [wantModify, setWantModify] = useState(false);
 
   // Handle OAuth callback params
   useEffect(() => {
@@ -48,8 +54,11 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   }, [searchParams, refetch]);
 
   const handleConnect = () => {
-    // Redirect to Gmail OAuth
-    window.location.href = usersApi.getGmailConnectUrl(userId);
+    // Redirect to Gmail OAuth with selected permissions
+    window.location.href = usersApi.getGmailConnectUrl(userId, {
+      labels: wantLabels,
+      modify: wantModify,
+    });
   };
 
   const handleDisconnect = async () => {
@@ -95,6 +104,29 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
               </Badge>
             </div>
 
+            {/* Show granted permissions */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Permissions:</p>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="text-green-700">
+                  <MailCheck className="mr-1 h-3 w-3" />
+                  Read emails
+                </Badge>
+                {status.can_manage_labels && (
+                  <Badge variant="outline" className="text-blue-700">
+                    <Tag className="mr-1 h-3 w-3" />
+                    Manage labels
+                  </Badge>
+                )}
+                {status.can_modify && (
+                  <Badge variant="outline" className="text-purple-700">
+                    <CheckCircle className="mr-1 h-3 w-3" />
+                    Mark as read
+                  </Badge>
+                )}
+              </div>
+            </div>
+
             {status.last_sync_at && (
               <p className="text-sm text-muted-foreground">
                 Last synced: {new Date(status.last_sync_at).toLocaleString()}
@@ -129,6 +161,55 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
               </div>
             </div>
 
+            {/* Permission selection */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <p className="text-sm font-medium">Choose permissions:</p>
+
+              <div className="flex items-start space-x-3">
+                <Checkbox id="read-emails" checked disabled />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="read-emails" className="text-sm font-medium">
+                    Read emails (required)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Scan your inbox for job alert emails
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="manage-labels"
+                  checked={wantLabels}
+                  onCheckedChange={(checked) => setWantLabels(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="manage-labels" className="text-sm font-medium">
+                    Manage labels (optional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Create and apply labels to organize job emails
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="mark-read"
+                  checked={wantModify}
+                  onCheckedChange={(checked) => setWantModify(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="mark-read" className="text-sm font-medium">
+                    Mark as read (optional)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically mark processed job alerts as read
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <Button onClick={handleConnect} className="w-full sm:w-auto">
               <Mail className="mr-2 h-4 w-4" />
               Connect Gmail
@@ -136,8 +217,7 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
             </Button>
 
             <p className="text-xs text-muted-foreground">
-              We only request read-only access to scan for job alert emails.
-              We never send emails on your behalf.
+              You can change these permissions later by reconnecting.
             </p>
           </div>
         )}
