@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck } from "lucide-react";
+import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Plus } from "lucide-react";
 
 interface GmailConnectionProps {
   userId: string;
@@ -29,6 +29,10 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   // Optional permissions state
   const [wantLabels, setWantLabels] = useState(false);
   const [wantModify, setWantModify] = useState(false);
+  const [showAddPermissions, setShowAddPermissions] = useState(false);
+
+  // Check if there are permissions that can still be added
+  const canAddMorePermissions = status?.connected && (!status.can_manage_labels || !status.can_modify);
 
   // Handle OAuth callback params
   useEffect(() => {
@@ -58,6 +62,14 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
     window.location.href = usersApi.getGmailConnectUrl(userId, {
       labels: wantLabels,
       modify: wantModify,
+    });
+  };
+
+  const handleAddPermissions = () => {
+    // Request additional permissions (Google will merge with existing)
+    window.location.href = usersApi.getGmailConnectUrl(userId, {
+      labels: wantLabels || status?.can_manage_labels,
+      modify: wantModify || status?.can_modify,
     });
   };
 
@@ -131,6 +143,85 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
               <p className="text-sm text-muted-foreground">
                 Last synced: {new Date(status.last_sync_at).toLocaleString()}
               </p>
+            )}
+
+            {/* Add more permissions section */}
+            {canAddMorePermissions && (
+              <div className="space-y-3">
+                {!showAddPermissions ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowAddPermissions(true)}
+                    className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-0 h-auto"
+                  >
+                    <Plus className="mr-1 h-3 w-3" />
+                    Add more permissions
+                  </Button>
+                ) : (
+                  <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+                    <p className="text-sm font-medium">Request additional permissions:</p>
+
+                    {!status.can_manage_labels && (
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="add-labels"
+                          checked={wantLabels}
+                          onCheckedChange={(checked) => setWantLabels(checked === true)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="add-labels" className="text-sm font-medium">
+                            Manage labels
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Create and apply labels to organize job emails
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!status.can_modify && (
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="add-modify"
+                          checked={wantModify}
+                          onCheckedChange={(checked) => setWantModify(checked === true)}
+                        />
+                        <div className="grid gap-1.5 leading-none">
+                          <Label htmlFor="add-modify" className="text-sm font-medium">
+                            Mark as read
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Automatically mark processed job alerts as read
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        size="sm"
+                        onClick={handleAddPermissions}
+                        disabled={!wantLabels && !wantModify}
+                      >
+                        <ExternalLink className="mr-1 h-3 w-3" />
+                        Request permissions
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowAddPermissions(false);
+                          setWantLabels(false);
+                          setWantModify(false);
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
 
             <Button

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useUser, useUpdateUser } from "@/lib/hooks/useUser";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,27 +14,31 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { EmailSendersSettings } from "@/components/settings/EmailSendersSettings";
 import { GmailConnection } from "@/components/settings/GmailConnection";
 import type { UserUpdate } from "@/types/user";
 
-// TODO: Replace with actual user ID from auth
-const TEMP_USER_ID = "31b291f4-83ab-4a84-83da-f6106bb10e53";
-
 export default function ProfilePage() {
   const router = useRouter();
-  const { data: user, isLoading } = useUser(TEMP_USER_ID);
+  const { data: session, status: sessionStatus } = useSession();
+
+  // Get user ID from session
+  const userId = session?.user?.id;
+
+  const { data: user, isLoading: isUserLoading } = useUser(userId || "");
   const updateUser = useUpdateUser();
 
   const [formData, setFormData] = useState<UserUpdate>({});
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize form data when user loads
-  useState(() => {
-    if (user) {
+  // Initialize form data when user loads, auto-fill email from session if empty
+  useEffect(() => {
+    if (user && !isInitialized) {
       setFormData({
         full_name: user.full_name,
-        email: user.email,
+        // Auto-fill email: use profile email, or fall back to session email
+        email: user.email || session?.user?.email || "",
         phone: user.phone,
         address: user.address,
         linkedin_url: user.linkedin_url,
@@ -41,15 +46,21 @@ export default function ProfilePage() {
         portfolio_url: user.portfolio_url,
         job_preferences: user.job_preferences,
       });
+      setIsInitialized(true);
     }
-  });
+  }, [user, session, isInitialized]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!userId) {
+      alert("Please sign in to update your profile");
+      return;
+    }
+
     try {
       await updateUser.mutateAsync({
-        id: TEMP_USER_ID,
+        id: userId,
         updates: formData,
       });
       // Show success message
@@ -67,11 +78,36 @@ export default function ProfilePage() {
     }));
   };
 
-  if (isLoading) {
+  // Show loading state while session or user data is loading
+  if (sessionStatus === "loading" || (userId && isUserLoading)) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-[500px]">
-          <p className="text-muted-foreground">Loading profile...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (sessionStatus === "unauthenticated") {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex flex-col items-center justify-center h-[500px] gap-4">
+          <p className="text-muted-foreground">Please sign in to view your profile</p>
+          <Button onClick={() => router.push("/login")}>Sign In</Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error if no user ID in session
+  if (!userId) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex flex-col items-center justify-center h-[500px] gap-4">
+          <p className="text-muted-foreground">Unable to load profile. Please sign in again.</p>
+          <Button onClick={() => router.push("/login")}>Sign In</Button>
         </div>
       </div>
     );
@@ -280,10 +316,10 @@ export default function ProfilePage() {
         </Card>
 
         {/* Gmail Connection */}
-        <GmailConnection userId={TEMP_USER_ID} />
+        <GmailConnection userId={userId} />
 
         {/* Email Alert Sources */}
-        <EmailSendersSettings userId={TEMP_USER_ID} />
+        <EmailSendersSettings userId={userId} />
 
         {/* Submit Button */}
         <div className="flex justify-end gap-2">
