@@ -6,6 +6,17 @@ import Credentials from "next-auth/providers/credentials"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
+// Helper to decode JWT and extract user ID
+function extractUserIdFromToken(token: string): string | null {
+  try {
+    const payload = token.split('.')[1]
+    const decoded = JSON.parse(Buffer.from(payload, 'base64').toString())
+    return decoded.sub || null
+  } catch {
+    return null
+  }
+}
+
 // Gmail scopes to request when signing in with Google
 const GMAIL_SCOPES = [
   "openid",
@@ -62,8 +73,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const data = await response.json()
 
+          // Extract user ID from the JWT token
+          const userId = extractUserIdFromToken(data.access_token)
+
           return {
-            id: data.user?.id || credentials.email,
+            id: userId || credentials.email as string,
             email: credentials.email as string,
             accessToken: data.access_token,
             refreshToken: data.refresh_token,

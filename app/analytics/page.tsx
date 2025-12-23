@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useJobs } from "@/lib/hooks/useJobs";
 import { useRateLimit } from "@/lib/hooks/useApplications";
 import { Button } from "@/components/ui/button";
@@ -15,9 +16,6 @@ import { ArrowLeft, TrendingUp, Target, AlertCircle, CheckCircle } from "lucide-
 import { JobStatus, JobBlockerType } from "@/types/job";
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
-// TODO: Replace with actual user ID from auth
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000001";
-
 const COLORS = {
   green: "#22c55e",
   blue: "#3b82f6",
@@ -30,8 +28,33 @@ const COLORS = {
 
 export default function AnalyticsPage() {
   const router = useRouter();
-  const { data: jobsData } = useJobs(TEMP_USER_ID);
-  const { data: rateLimit } = useRateLimit(TEMP_USER_ID);
+  const { data: session, status: sessionStatus } = useSession();
+  const userId = session?.user?.id;
+
+  const { data: jobsData } = useJobs(userId || "");
+  const { data: rateLimit } = useRateLimit(userId || "");
+
+  // Show loading while session is loading
+  if (sessionStatus === "loading") {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-[500px]">
+          <p className="text-muted-foreground">Loading analytics...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (sessionStatus === "unauthenticated" || !userId) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-[500px]">
+          <p className="text-muted-foreground">Please log in to view analytics.</p>
+        </div>
+      </div>
+    );
+  }
 
   const jobs = jobsData?.jobs || [];
 

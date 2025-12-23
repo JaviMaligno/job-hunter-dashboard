@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useJob } from "@/lib/hooks/useJobs";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,14 +23,18 @@ import {
 } from "lucide-react";
 import { JobBlockerType, JobStatus } from "@/types/job";
 import { ApplicationModeSelector } from "@/components/jobs/ApplicationModeSelector";
+import { CVAdaptDialog } from "@/components/jobs/CVAdaptDialog";
 import { useState } from "react";
 
 export default function JobDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { data: session } = useSession();
   const jobId = params.id as string;
+  const userId = session?.user?.id;
   const { data: job, isLoading, error } = useJob(jobId);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [showCVAdaptDialog, setShowCVAdaptDialog] = useState(false);
 
   if (isLoading) {
     return (
@@ -271,12 +276,17 @@ export default function JobDetailPage() {
                 Generated documents for this position
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                No adapted CV yet
-              </p>
-              <p className="text-sm text-muted-foreground">
-                No cover letter yet
+            <CardContent className="space-y-4">
+              <Button
+                onClick={() => setShowCVAdaptDialog(true)}
+                className="w-full"
+                variant="secondary"
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                Adapt CV & Generate Cover Letter
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                AI will analyze the job requirements and adapt your CV
               </p>
             </CardContent>
           </Card>
@@ -288,9 +298,21 @@ export default function JobDetailPage() {
         <ApplicationModeSelector
           jobId={jobId}
           jobUrl={job.source_url}
+          userId={userId || ""}
           onClose={() => setShowApplicationModal(false)}
         />
       )}
+
+      {/* CV Adapt Dialog */}
+      <CVAdaptDialog
+        open={showCVAdaptDialog}
+        onOpenChange={setShowCVAdaptDialog}
+        jobTitle={job.title}
+        company={job.company || "Unknown Company"}
+        jobDescription={job.description_raw}
+        jobUrl={job.source_url}
+        userId={userId}
+      />
     </div>
   );
 }

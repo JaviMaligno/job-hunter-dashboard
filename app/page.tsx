@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Board } from "@/components/kanban/Board";
 import { useJobs, useSearchJobs } from "@/lib/hooks/useJobs";
 import { useRouter } from "next/navigation";
@@ -9,9 +10,6 @@ import { AddJobDialog } from "@/components/jobs/AddJobDialog";
 import { SearchFilterBar } from "@/components/jobs/SearchFilterBar";
 import { Icons } from "@/components/icons";
 import type { Job, JobStatus } from "@/types/job";
-
-// TODO: Replace with actual user ID from auth
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 interface SearchFilters {
   q?: string;
@@ -22,16 +20,19 @@ interface SearchFilters {
 
 export default function HomePage() {
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
   const [searchFilters, setSearchFilters] = useState<SearchFilters | null>(null);
 
+  const userId = session?.user?.id;
+
   // Regular jobs query (when not searching)
-  const jobsQuery = useJobs(TEMP_USER_ID);
+  const jobsQuery = useJobs(userId || "");
 
   // Search query (when searching)
   const searchQuery = useSearchJobs(
-    TEMP_USER_ID,
+    userId || "",
     searchFilters || {},
-    !!searchFilters
+    !!searchFilters && !!userId
   );
 
   // Use search results when searching, otherwise regular jobs
@@ -51,11 +52,23 @@ export default function HomePage() {
     setSearchFilters(null);
   }, []);
 
-  if (isLoading) {
+  // Show loading while session or jobs are loading
+  if (sessionStatus === "loading" || (userId && isLoading)) {
     return (
       <div className="container mx-auto p-4">
         <div className="flex items-center justify-center h-[500px]">
           <p className="text-muted-foreground">Loading jobs...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (sessionStatus === "unauthenticated" || !userId) {
+    return (
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-[500px]">
+          <p className="text-muted-foreground">Please log in to view your jobs.</p>
         </div>
       </div>
     );
@@ -80,7 +93,7 @@ export default function HomePage() {
             {data?.total || 0} total jobs
           </p>
         </div>
-        <AddJobDialog userId={TEMP_USER_ID}>
+        <AddJobDialog userId={userId}>
           <Button>
             <Icons.plus className="mr-2 h-4 w-4" />
             Add Job

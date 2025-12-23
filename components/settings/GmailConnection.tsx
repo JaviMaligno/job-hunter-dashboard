@@ -15,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Settings2 } from "lucide-react";
+import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Settings2, Search } from "lucide-react";
+import type { EmailScanResponse } from "@/lib/api/users";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +43,11 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   const [showManagePermissions, setShowManagePermissions] = useState(false);
   const [showReauthDialog, setShowReauthDialog] = useState(false);
   const [pendingPermissions, setPendingPermissions] = useState<{ labels: boolean; modify: boolean } | null>(null);
+
+  // Email scanning state
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<EmailScanResponse | null>(null);
+  const [scanError, setScanError] = useState<string | null>(null);
 
   // Initialize permission state from current status
   useEffect(() => {
@@ -145,6 +151,22 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
     }
   };
 
+  const handleScan = async () => {
+    setIsScanning(true);
+    setScanResult(null);
+    setScanError(null);
+    try {
+      const result = await usersApi.scanEmails(userId, { max_emails: 20 });
+      setScanResult(result);
+      refetch(); // Refresh status to get updated last_sync_at
+    } catch (error) {
+      console.error("Failed to scan emails:", error);
+      setScanError(error instanceof Error ? error.message : "Failed to scan emails");
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -206,6 +228,78 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
                 Last synced: {new Date(status.last_sync_at).toLocaleString()}
               </p>
             )}
+
+            {/* Scan emails button */}
+            <div className="space-y-3">
+              <Button
+                onClick={handleScan}
+                disabled={isScanning}
+                variant="secondary"
+              >
+                {isScanning ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="mr-2 h-4 w-4" />
+                )}
+                {isScanning ? "Scanning..." : "Scan Emails for Jobs"}
+              </Button>
+
+              {/* Scan results */}
+              {scanResult && (
+                <div className="p-4 border rounded-lg bg-blue-50 dark:bg-blue-950 space-y-3">
+                  <p className="font-medium text-blue-800 dark:text-blue-200">
+                    Scan Complete
+                  </p>
+
+                  {/* Stats grid */}
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="p-2 bg-white dark:bg-blue-900 rounded">
+                      <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                        {scanResult.emails_scanned}
+                      </p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">Emails</p>
+                    </div>
+                    <div className="p-2 bg-white dark:bg-blue-900 rounded">
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                        {scanResult.jobs_extracted}
+                      </p>
+                      <p className="text-xs text-green-600 dark:text-green-400">New Jobs</p>
+                    </div>
+                    <div className="p-2 bg-white dark:bg-blue-900 rounded">
+                      <p className="text-lg font-bold text-amber-600 dark:text-amber-400">
+                        {scanResult.jobs_skipped_duplicates}
+                      </p>
+                      <p className="text-xs text-amber-600 dark:text-amber-400">Duplicates</p>
+                    </div>
+                  </div>
+
+                  {/* Info message about duplicates */}
+                  {scanResult.jobs_skipped_duplicates > 0 && scanResult.jobs_extracted === 0 && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 p-2 rounded">
+                      All jobs from these emails are already in your list. Check your Kanban board!
+                    </p>
+                  )}
+
+                  {scanResult.emails.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-blue-800 dark:text-blue-200">Recent emails:</p>
+                      {scanResult.emails.slice(0, 5).map((email) => (
+                        <p key={email.message_id} className="text-xs text-blue-600 dark:text-blue-400 truncate">
+                          {email.sender}: {email.subject}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Scan error */}
+              {scanError && (
+                <div className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
+                  <p className="text-sm text-red-700 dark:text-red-300">{scanError}</p>
+                </div>
+              )}
+            </div>
 
             {/* Manage permissions section */}
             <div className="space-y-3">

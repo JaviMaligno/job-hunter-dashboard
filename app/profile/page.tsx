@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { CVUpload } from "@/components/settings/CVUpload";
 import { EmailSendersSettings } from "@/components/settings/EmailSendersSettings";
 import { GmailConnection } from "@/components/settings/GmailConnection";
 import type { UserUpdate } from "@/types/user";
@@ -314,6 +315,9 @@ export default function ProfilePage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Base CV Upload */}
+        <CVUpload userId={userId} />
 
         {/* Gmail Connection */}
         <GmailConnection userId={userId} />

@@ -71,5 +71,6 @@ export interface JobListResponse {
 
 export interface JobImportResponse {
   job: Job;
+  message: string;
   scraped_fields: string[];
 }

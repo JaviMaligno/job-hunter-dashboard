@@ -94,16 +94,19 @@ export function AddJobDialog({ userId, children }: AddJobDialogProps) {
 
     try {
       const result = await importJob.mutateAsync(data.url)
+      const scrapedFields = result.scraped_fields || []
+      const fieldsInfo = scrapedFields.length > 0
+        ? `Scraped: ${scrapedFields.join(", ")}`
+        : ""
       setImportSuccess(
-        `Successfully imported "${result.job.title}" from ${result.job.company || "Unknown Company"}. ` +
-        `Scraped fields: ${result.scraped_fields.join(", ")}`
+        `${result.message}${fieldsInfo ? ` ${fieldsInfo}` : ""}`
       )
       importForm.reset()
       // Auto-close after success
       setTimeout(() => {
         setOpen(false)
         setImportSuccess(null)
-      }, 2000)
+      }, 2500)
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Failed to import job from URL"
       setImportError(errorMessage)

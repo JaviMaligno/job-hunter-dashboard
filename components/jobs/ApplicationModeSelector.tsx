@@ -18,20 +18,20 @@ import { X, PlayCircle, PauseCircle, Zap } from "lucide-react";
 interface ApplicationModeSelectorProps {
   jobId: string;
   jobUrl: string;
+  userId: string;
   onClose: () => void;
 }
-
-const TEMP_USER_ID = "00000000-0000-0000-0000-000000000001";
 
 export function ApplicationModeSelector({
   jobId,
   jobUrl,
+  userId,
   onClose,
 }: ApplicationModeSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<ApplicationMode | null>(
     null
   );
-  const startApplication = useStartApplication(TEMP_USER_ID);
+  const startApplication = useStartApplication(userId);
   const router = useRouter();
 
   const modes = [

@@ -8,6 +8,28 @@ import type {
   JobImportResponse,
 } from "@/types/job";
 
+// CV Adaptation types
+export interface CVAdaptRequest {
+  job_url?: string;
+  job_description?: string;
+  job_title: string;
+  company: string;
+  cv_content?: string;
+  language?: "en" | "es";
+}
+
+export interface CVAdaptResponse {
+  adapted_cv: string;
+  cover_letter: string;
+  match_score: number;
+  changes_made: string[];
+  skills_matched: string[];
+  skills_missing: string[];
+  key_highlights: string[];
+  job_id?: string;
+  material_ids?: string[];
+}
+
 export const jobsApi = {
   list: async (params: {
     user_id: string;
@@ -84,5 +106,16 @@ export const jobsApi = {
     return apiClient<JobListResponse & { query?: string; filters?: Record<string, unknown> }>(
       `/api/jobs/search?${searchParams}`
     );
+  },
+
+  /**
+   * Adapt CV and generate cover letter for a job.
+   * This uses AI to analyze the job requirements and adapt the CV.
+   */
+  adaptCV: async (request: CVAdaptRequest): Promise<CVAdaptResponse> => {
+    return apiClient<CVAdaptResponse>("/api/jobs/adapt", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
   },
 };

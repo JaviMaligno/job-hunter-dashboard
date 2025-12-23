@@ -85,3 +85,43 @@ export function useDisconnectGmail() {
     },
   });
 }
+
+// CV hooks
+export function useUserCV(userId: string) {
+  return useQuery({
+    queryKey: ["user", userId, "cv"],
+    queryFn: () => usersApi.getCV(userId),
+    enabled: !!userId,
+  });
+}
+
+export function useUploadCV() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ userId, file }: { userId: string; file: File }) =>
+      usersApi.uploadCV(userId, file),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["user", variables.userId, "cv"] });
+    },
+  });
+}
+
+export function useDeleteCV() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => usersApi.deleteCV(userId),
+    onSuccess: (_, userId) => {
+      queryClient.invalidateQueries({ queryKey: ["user", userId, "cv"] });
+    },
+  });
+}
+
+export function useUserCVContent(userId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["user", userId, "cv-content"],
+    queryFn: () => usersApi.getCVContent(userId),
+    enabled: !!userId && enabled,
+  });
+}

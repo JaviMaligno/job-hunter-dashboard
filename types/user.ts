@@ -71,3 +71,18 @@ export interface EmailSenderPreferencesResponse {
   user_preferences: EmailSenderPreferences;
   effective_senders: EmailSender[];
 }
+
+// CV Types (matching API response from users.py)
+export interface CVResponse {
+  has_cv: boolean;
+  text_length: number;
+  preview: string | null;
+  content: string | null;
+}
+
+export interface CVUploadResponse {
+  success: boolean;
+  message: string;
+  text_length: number;
+  preview: string;
+}
