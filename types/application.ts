@@ -33,9 +33,32 @@ export interface Application {
   completed_at?: string;
 }
 
+// User data for form filling (matches backend UserFormData)
+export interface UserFormData {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  phone_country_code?: string;
+  address_line_1?: string;
+  address_line_2?: string;
+  city?: string;
+  county_state?: string;
+  country?: string;
+  postal_code?: string;
+  linkedin_url?: string;
+  github_url?: string;
+  portfolio_url?: string;
+}
+
 export interface StartApplicationRequest {
   job_url: string;
+  user_data: UserFormData;
+  cv_content: string;
+  cv_file_path?: string;
+  cover_letter?: string;
   mode: ApplicationMode;
+  headless?: boolean;
 }
 
 export interface ApplicationStatusResponse {

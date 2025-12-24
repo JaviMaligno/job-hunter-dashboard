@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,9 +11,10 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useStartApplication } from "@/lib/hooks/useApplications";
-import { ApplicationMode } from "@/types/application";
+import { ApplicationMode, UserFormData } from "@/types/application";
 import { useRouter } from "next/navigation";
-import { X, PlayCircle, PauseCircle, Zap } from "lucide-react";
+import { X, PlayCircle, PauseCircle, Zap, Loader2 } from "lucide-react";
+import { usersApi } from "@/lib/api/users";
 
 interface ApplicationModeSelectorProps {
   jobId: string;
@@ -31,8 +32,52 @@ export function ApplicationModeSelector({
   const [selectedMode, setSelectedMode] = useState<ApplicationMode | null>(
     null
   );
+  const [userData, setUserData] = useState<UserFormData | null>(null);
+  const [cvContent, setCvContent] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const startApplication = useStartApplication(userId);
   const router = useRouter();
+
+  // Fetch user data and CV content on mount
+  useEffect(() => {
+    async function loadUserData() {
+      try {
+        setLoading(true);
+        setLoadError(null);
+
+        // Fetch user and CV in parallel
+        const [user, cv] = await Promise.all([
+          usersApi.get(userId),
+          usersApi.getCVContent(userId),
+        ]);
+
+        // Parse full_name into first_name and last_name
+        const nameParts = (user.full_name || "").trim().split(/\s+/);
+        const firstName = nameParts[0] || "";
+        const lastName = nameParts.slice(1).join(" ") || "";
+
+        setUserData({
+          first_name: firstName,
+          last_name: lastName,
+          email: user.email,
+          phone: user.phone || "",
+          linkedin_url: user.linkedin_url,
+          github_url: user.github_url,
+          portfolio_url: user.portfolio_url,
+        });
+
+        setCvContent(cv);
+      } catch (err: any) {
+        console.error("Failed to load user data:", err);
+        setLoadError(err.message || "Failed to load user data");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUserData();
+  }, [userId]);
 
   const modes = [
     {
@@ -77,12 +122,14 @@ export function ApplicationModeSelector({
   ];
 
   const handleStart = async () => {
-    if (!selectedMode) return;
+    if (!selectedMode || !userData || !cvContent) return;
 
     try {
       const result = await startApplication.mutateAsync({
         request: {
           job_url: jobUrl,
+          user_data: userData,
+          cv_content: cvContent,
           mode: selectedMode,
         },
         jobId,
@@ -95,6 +142,9 @@ export function ApplicationModeSelector({
       // TODO: Show error toast
     }
   };
+
+  // Check if ready to start
+  const isReady = !loading && userData && cvContent && !loadError;
 
   const getBorderColor = (color: string) => {
     const colors: Record<string, string> = {
@@ -121,7 +171,32 @@ export function ApplicationModeSelector({
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {/* Mode Cards */}
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-muted-foreground">Loading your data...</span>
+            </div>
+          )}
+
+          {/* Error State */}
+          {loadError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded text-red-800">
+              <p className="font-medium">Unable to load required data</p>
+              <p className="text-sm mt-1">{loadError}</p>
+              <p className="text-sm mt-2">Please ensure you have uploaded a CV and completed your profile.</p>
+            </div>
+          )}
+
+          {/* No CV Warning */}
+          {!loading && !loadError && !cvContent && (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+              <p className="font-medium">CV Required</p>
+              <p className="text-sm mt-1">Please upload your CV before starting an application.</p>
+            </div>
+          )}
+          {/* Mode Cards - Only show when ready */}
+          {isReady && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {modes.map((modeOption) => {
               const Icon = modeOption.icon;
@@ -158,7 +233,7 @@ export function ApplicationModeSelector({
                 </button>
               );
             })}
-          </div>
+          </div>)}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2 pt-4">
@@ -167,7 +242,7 @@ export function ApplicationModeSelector({
             </Button>
             <Button
               onClick={handleStart}
-              disabled={!selectedMode || startApplication.isPending}
+              disabled={!isReady || !selectedMode || startApplication.isPending}
             >
               {startApplication.isPending
                 ? "Starting..."
