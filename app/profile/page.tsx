@@ -34,13 +34,12 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<UserUpdate>({});
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize form data when user loads, auto-fill email from session if empty
+  // Initialize form data when user loads
   useEffect(() => {
     if (user && !isInitialized) {
       setFormData({
         full_name: user.full_name,
-        // Auto-fill email: use profile email, or fall back to session email
-        email: user.email || session?.user?.email || "",
+        email: user.email || "",
         phone: user.phone,
         address: user.address,
         linkedin_url: user.linkedin_url,
@@ -50,7 +49,17 @@ export default function ProfilePage() {
       });
       setIsInitialized(true);
     }
-  }, [user, session, isInitialized]);
+  }, [user, isInitialized]);
+
+  // Auto-fill email from session if form email is empty
+  useEffect(() => {
+    if (session?.user?.email && !formData.email && isInitialized) {
+      setFormData((prev) => ({
+        ...prev,
+        email: session.user.email || "",
+      }));
+    }
+  }, [session?.user?.email, formData.email, isInitialized]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
