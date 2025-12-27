@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: job-hunter-dashboard
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # API URLs
+      - key: NEXT_PUBLIC_API_URL
+        value: https://job-hunter-api-kdyd.onrender.com
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://job-hunter-api-kdyd.onrender.com
+      # NextAuth.js configuration
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_URL
+        value: https://job-hunter-dashboard.onrender.com
+      # OAuth credentials - set manually in Render dashboard
+      - key: AUTH_GOOGLE_ID
+        sync: false
+      - key: AUTH_GOOGLE_SECRET
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
