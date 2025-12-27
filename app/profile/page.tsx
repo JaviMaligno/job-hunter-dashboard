@@ -18,6 +18,7 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { CVUpload } from "@/components/settings/CVUpload";
 import { EmailSendersSettings } from "@/components/settings/EmailSendersSettings";
 import { GmailConnection } from "@/components/settings/GmailConnection";
+import { LinkedInConnection } from "@/components/settings/LinkedInConnection";
 import type { UserUpdate } from "@/types/user";
 
 export default function ProfilePage() {
@@ -321,6 +322,9 @@ export default function ProfilePage() {
 
         {/* Gmail Connection */}
         <GmailConnection userId={userId} />
+
+        {/* LinkedIn Connection */}
+        <LinkedInConnection userId={userId} />
 
         {/* Email Alert Sources */}
         <EmailSendersSettings userId={userId} />

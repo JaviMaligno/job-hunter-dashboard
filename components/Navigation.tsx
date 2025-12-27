@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, User, BarChart3, LogOut, LogIn } from "lucide-react";
+import { LayoutDashboard, User, BarChart3, LogOut, LogIn, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,12 @@ export function Navigation() {
       label: "Dashboard",
       icon: LayoutDashboard,
       active: pathname === "/",
+    },
+    {
+      href: "/interventions",
+      label: "Automation",
+      icon: AlertCircle,
+      active: pathname === "/interventions",
     },
     {
       href: "/analytics",

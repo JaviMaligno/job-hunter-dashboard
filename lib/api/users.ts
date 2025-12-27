@@ -17,6 +17,13 @@ export interface GmailStatus {
   can_modify: boolean;
 }
 
+export interface LinkedInStatus {
+  connected: boolean;
+  email: string | null;
+  name: string | null;
+  connected_at: string | null;
+}
+
 export interface GmailConnectOptions {
   labels?: boolean;
   modify?: boolean;
@@ -99,6 +106,22 @@ export const usersApi = {
 
   disconnectGmail: async (userId: string): Promise<{ success: boolean; message: string }> => {
     return apiClient(`/api/gmail/disconnect/${userId}`, {
+      method: "DELETE",
+    });
+  },
+
+  // LinkedIn connection
+  getLinkedInStatus: async (userId: string): Promise<LinkedInStatus> => {
+    return apiClient<LinkedInStatus>(`/api/linkedin/status/${userId}`);
+  },
+
+  getLinkedInConnectUrl: (userId: string): string => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    return `${baseUrl}/api/linkedin/connect/${userId}`;
+  },
+
+  disconnectLinkedIn: async (userId: string): Promise<{ success: boolean; message: string }> => {
+    return apiClient(`/api/linkedin/disconnect/${userId}`, {
       method: "DELETE",
     });
   },

@@ -86,6 +86,27 @@ export function useDisconnectGmail() {
   });
 }
 
+// LinkedIn connection hooks
+export function useLinkedInStatus(userId: string) {
+  return useQuery({
+    queryKey: ["linkedin", userId, "status"],
+    queryFn: () => usersApi.getLinkedInStatus(userId),
+    enabled: !!userId,
+    refetchOnWindowFocus: true, // Refetch when user returns from OAuth
+  });
+}
+
+export function useDisconnectLinkedIn() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (userId: string) => usersApi.disconnectLinkedIn(userId),
+    onSuccess: (_, userId) => {
+      queryClient.invalidateQueries({ queryKey: ["linkedin", userId, "status"] });
+    },
+  });
+}
+
 // CV hooks
 export function useUserCV(userId: string) {
   return useQuery({
