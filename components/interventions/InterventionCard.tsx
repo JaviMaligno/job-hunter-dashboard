@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   ExternalLink,
@@ -21,9 +31,12 @@ import {
   ChevronUp,
   ListChecks,
   ListTodo,
+  Monitor,
 } from "lucide-react";
 import type { Intervention, InterventionType } from "@/types/intervention";
 import { interventionsApi } from "@/lib/api/interventions";
+
+const CLOSE_BROWSER_PREFERENCE_KEY = "intervention_close_browser_preference";
 
 interface InterventionCardProps {
   intervention: Intervention;
@@ -48,6 +61,17 @@ export function InterventionCard({ intervention, onResolved }: InterventionCardP
   const [isResolving, setIsResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showDoneDialog, setShowDoneDialog] = useState(false);
+  const [closeBrowser, setCloseBrowser] = useState(true);
+  const [rememberChoice, setRememberChoice] = useState(false);
+
+  // Load saved preference on mount
+  useEffect(() => {
+    const savedPref = localStorage.getItem(CLOSE_BROWSER_PREFERENCE_KEY);
+    if (savedPref !== null) {
+      setCloseBrowser(savedPref === "true");
+    }
+  }, []);
 
   const config = typeConfig[intervention.intervention_type] || typeConfig.other;
   const Icon = config.icon;
@@ -70,18 +94,39 @@ export function InterventionCard({ intervention, onResolved }: InterventionCardP
     return date.toLocaleDateString();
   };
 
-  const handleResolve = async (action: "continue" | "submit" | "cancel" | "retry") => {
+  const handleResolve = async (action: "continue" | "submit" | "cancel" | "retry", options?: { close_browser?: boolean }) => {
     setIsResolving(true);
     setError(null);
 
     try {
-      await interventionsApi.resolve(intervention.id, { action });
+      await interventionsApi.resolve(intervention.id, { action, ...options });
       onResolved?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to resolve");
     } finally {
       setIsResolving(false);
     }
+  };
+
+  const handleDoneClick = () => {
+    // Check if there's a saved preference
+    const savedPref = localStorage.getItem(CLOSE_BROWSER_PREFERENCE_KEY);
+    if (savedPref !== null) {
+      // Use saved preference without showing dialog
+      handleResolve("continue", { close_browser: savedPref === "true" });
+    } else {
+      // Show dialog to ask user
+      setShowDoneDialog(true);
+    }
+  };
+
+  const handleDoneConfirm = () => {
+    // Save preference if requested
+    if (rememberChoice) {
+      localStorage.setItem(CLOSE_BROWSER_PREFERENCE_KEY, String(closeBrowser));
+    }
+    setShowDoneDialog(false);
+    handleResolve("continue", { close_browser: closeBrowser });
   };
 
   const filledCount = intervention.fields_filled
@@ -243,7 +288,7 @@ export function InterventionCard({ intervention, onResolved }: InterventionCardP
         <Button
           size="sm"
           variant="default"
-          onClick={() => handleResolve("continue")}
+          onClick={handleDoneClick}
           disabled={isResolving}
           className="flex-1"
         >
@@ -269,6 +314,67 @@ export function InterventionCard({ intervention, onResolved }: InterventionCardP
           <XCircle className="h-3 w-3" />
         </Button>
       </CardFooter>
+
+      {/* Done Confirmation Dialog */}
+      <Dialog open={showDoneDialog} onOpenChange={setShowDoneDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Monitor className="h-5 w-5" />
+              Close Browser Session?
+            </DialogTitle>
+            <DialogDescription>
+              Would you like to close the browser session associated with this intervention?
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="closeBrowser"
+                checked={closeBrowser}
+                onCheckedChange={(checked) => setCloseBrowser(checked === true)}
+              />
+              <Label htmlFor="closeBrowser" className="cursor-pointer">
+                Close the browser session
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rememberChoice"
+                checked={rememberChoice}
+                onCheckedChange={(checked) => setRememberChoice(checked === true)}
+              />
+              <Label htmlFor="rememberChoice" className="cursor-pointer text-muted-foreground text-sm">
+                Remember my choice for future interventions
+              </Label>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              {closeBrowser
+                ? "The browser window will be closed and the session ended."
+                : "The browser window will remain open for you to continue manually."}
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDoneDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleDoneConfirm} disabled={isResolving}>
+              {isResolving ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

@@ -97,6 +97,7 @@ export interface ApplicationV2Response {
 export interface ResolveInterventionRequest {
   action: "continue" | "submit" | "cancel" | "retry";
   notes?: string;
+  close_browser?: boolean;
 }
 
 // WebSocket message types

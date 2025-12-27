@@ -87,3 +87,41 @@ export interface RateLimitStatus {
   auto_limit: number;
   reset_at: string;
 }
+
+// V2 API Types
+
+export enum AgentType {
+  GEMINI = "gemini",
+  CLAUDE = "claude",
+  HYBRID = "hybrid",
+}
+
+export interface StartApplicationV2Request {
+  job_url: string;
+  user_data: UserFormData;
+  cv_content: string;
+  cv_file_path?: string;
+  cover_letter?: string;
+  mode: ApplicationMode;
+  agent?: AgentType;
+  auto_solve_captcha?: boolean;
+  gemini_model?: string;
+  browser_mode?: string;
+  devtools_url?: string;
+}
+
+export interface ApplicationV2Response {
+  session_id: string;
+  status: string;
+  success: boolean;
+  agent_used: string;
+  steps_completed: string[];
+  fields_filled: number;
+  intervention_id?: string;
+  intervention_type?: string;
+  intervention_title?: string;
+  captcha_solved: boolean;
+  captcha_cost: number;
+  error?: string;
+  final_url?: string;
+}
