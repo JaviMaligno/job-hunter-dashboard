@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { LayoutDashboard, User, BarChart3, LogOut, LogIn, AlertCircle } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -92,8 +93,9 @@ export function Navigation() {
             </div>
           </div>
 
-          {/* User Menu */}
-          <div className="flex items-center gap-4">
+          {/* Theme Toggle & User Menu */}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
             {status === "loading" ? (
               <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
             ) : session ? (
