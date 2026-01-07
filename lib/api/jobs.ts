@@ -18,7 +18,18 @@ export interface CVAdaptRequest {
   language?: "en" | "es";
 }
 
+// Document generation types
+export interface DocumentGenerateRequest {
+  content: string;
+  format: "docx" | "pdf";
+  doc_type: "cv" | "cover_letter";
+  job_title?: string;
+  company?: string;
+  candidate_name?: string;
+}
+
 export interface CVAdaptResponse {
+  detected_language: string;
   adapted_cv: string;
   cover_letter: string;
   match_score: number;
@@ -117,5 +128,27 @@ export const jobsApi = {
       method: "POST",
       body: JSON.stringify(request),
     });
+  },
+
+  /**
+   * Generate a downloadable document (DOCX or PDF) from content.
+   * Returns a Blob that can be downloaded.
+   */
+  generateDocument: async (request: DocumentGenerateRequest): Promise<Blob> => {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const response = await fetch(`${API_BASE_URL}/api/jobs/documents/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: "Failed to generate document" }));
+      throw new Error(error.detail || "Failed to generate document");
+    }
+
+    return response.blob();
   },
 };

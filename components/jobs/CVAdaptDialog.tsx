@@ -21,7 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload, ChevronDown } from "lucide-react";
 import { jobsApi, type CVAdaptResponse } from "@/lib/api/jobs";
 import { useUserCV, useUserCVContent } from "@/lib/hooks/useUser";
 
@@ -46,7 +52,7 @@ export function CVAdaptDialog({
 }: CVAdaptDialogProps) {
   const [cvContent, setCvContent] = useState("");
   const [cvSource, setCvSource] = useState<"saved" | "paste">("paste");
-  const [language, setLanguage] = useState<"en" | "es">("es");
+  const [language, setLanguage] = useState<"auto" | "en" | "es">("auto");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CVAdaptResponse | null>(null);
@@ -94,7 +100,7 @@ export function CVAdaptDialog({
         job_url: jobUrl,
         job_title: jobTitle,
         company: company,
-        language: language,
+        language: language === "auto" ? undefined : language,
       });
       setResult(response);
       setActiveTab("result");
@@ -118,6 +124,40 @@ export function CVAdaptDialog({
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadFormat = async (
+    content: string,
+    docType: "cv" | "cover_letter",
+    format: "txt" | "docx" | "pdf"
+  ) => {
+    if (format === "txt") {
+      const filename = docType === "cv"
+        ? `CV_${company}_${jobTitle}.txt`
+        : `CoverLetter_${company}_${jobTitle}.txt`;
+      handleDownload(content, filename);
+      return;
+    }
+
+    try {
+      const blob = await jobsApi.generateDocument({
+        content,
+        format,
+        doc_type: docType,
+        job_title: jobTitle,
+        company: company,
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const typeName = docType === "cv" ? "CV" : "CoverLetter";
+      a.download = `${typeName}_${company}_${jobTitle}.${format}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Failed to generate ${format.toUpperCase()}`);
+    }
   };
 
   const handleClose = () => {
@@ -244,11 +284,12 @@ export function CVAdaptDialog({
             <div className="flex items-center gap-4">
               <div className="space-y-2">
                 <Label>Output Language</Label>
-                <Select value={language} onValueChange={(v) => setLanguage(v as "en" | "es")}>
-                  <SelectTrigger className="w-40">
+                <Select value={language} onValueChange={(v) => setLanguage(v as "auto" | "en" | "es")}>
+                  <SelectTrigger className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="auto">Auto-detect</SelectItem>
                     <SelectItem value="es">Spanish</SelectItem>
                     <SelectItem value="en">English</SelectItem>
                   </SelectContent>
@@ -266,12 +307,12 @@ export function CVAdaptDialog({
           <TabsContent value="result" className="flex-1 overflow-auto space-y-4 mt-4">
             {result && (
               <>
-                {/* Match Score */}
+                {/* Match Score & Language */}
                 <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
                   <div className={`px-4 py-2 rounded-lg font-bold text-2xl ${getMatchScoreColor(result.match_score)}`}>
                     {result.match_score}%
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <p className="font-medium">Match Score</p>
                     <p className="text-sm text-muted-foreground">
                       {result.match_score >= 80 && "Excellent match! High chance of interview."}
@@ -280,6 +321,9 @@ export function CVAdaptDialog({
                       {result.match_score < 40 && "Low match. Significant skill gaps."}
                     </p>
                   </div>
+                  <Badge variant="outline" className="text-sm">
+                    {result.detected_language === "es" ? "🇪🇸 Spanish" : "🇬🇧 English"}
+                  </Badge>
                 </div>
 
                 {/* Skills Analysis */}
@@ -354,10 +398,26 @@ export function CVAdaptDialog({
                         <Copy className="h-3 w-3 mr-1" />
                         Copy
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDownload(result.adapted_cv, `CV_${company}_${jobTitle}.txt`)}>
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Download className="h-3 w-3 mr-1" />
+                            Download
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "txt")}>
+                            TXT (Plain Text)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "docx")}>
+                            DOCX (Word)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "pdf")}>
+                            PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   <Textarea
@@ -380,10 +440,26 @@ export function CVAdaptDialog({
                         <Copy className="h-3 w-3 mr-1" />
                         Copy
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDownload(result.cover_letter, `CoverLetter_${company}_${jobTitle}.txt`)}>
-                        <Download className="h-3 w-3 mr-1" />
-                        Download
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="outline">
+                            <Download className="h-3 w-3 mr-1" />
+                            Download
+                            <ChevronDown className="h-3 w-3 ml-1" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.cover_letter, "cover_letter", "txt")}>
+                            TXT (Plain Text)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.cover_letter, "cover_letter", "docx")}>
+                            DOCX (Word)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.cover_letter, "cover_letter", "pdf")}>
+                            PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   <Textarea
