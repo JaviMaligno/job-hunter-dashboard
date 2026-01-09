@@ -10,12 +10,33 @@ import type {
 
 // CV Adaptation types
 export interface CVAdaptRequest {
+  job_id?: string; // If provided, materials will be saved to this job
   job_url?: string;
   job_description?: string;
   job_title: string;
   company: string;
   cv_content?: string;
   language?: "en" | "es";
+}
+
+// Material types
+export type MaterialType = "cv" | "cover_letter" | "talking_points";
+
+export interface Material {
+  id: string;
+  job_id: string;
+  material_type: MaterialType;
+  content: string;
+  changes_made?: string[];
+  changes_explanation?: string;
+  version: number;
+  is_current: boolean;
+  created_at: string;
+}
+
+export interface MaterialListResponse {
+  materials: Material[];
+  job_id: string;
 }
 
 // Document generation types
@@ -150,5 +171,44 @@ export const jobsApi = {
     }
 
     return response.blob();
+  },
+
+  // Material methods
+
+  /**
+   * Get all materials for a job.
+   */
+  getMaterials: async (jobId: string, materialType?: MaterialType): Promise<MaterialListResponse> => {
+    const params = materialType ? `?material_type=${materialType}` : "";
+    return apiClient<MaterialListResponse>(`/api/jobs/${jobId}/materials${params}`);
+  },
+
+  /**
+   * Get the current version of a specific material type for a job.
+   */
+  getMaterial: async (jobId: string, materialType: MaterialType): Promise<Material> => {
+    return apiClient<Material>(`/api/jobs/${jobId}/materials/${materialType}`);
+  },
+
+  /**
+   * Get all versions of a material type for a job.
+   */
+  getMaterialVersions: async (jobId: string, materialType: MaterialType): Promise<Material[]> => {
+    return apiClient<Material[]>(`/api/jobs/${jobId}/materials/${materialType}/versions`);
+  },
+
+  /**
+   * Create a new material for a job.
+   */
+  createMaterial: async (jobId: string, material: {
+    material_type: MaterialType;
+    content: string;
+    changes_made?: string[];
+    changes_explanation?: string;
+  }): Promise<Material> => {
+    return apiClient<Material>(`/api/jobs/${jobId}/materials`, {
+      method: "POST",
+      body: JSON.stringify(material),
+    });
   },
 };

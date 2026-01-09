@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { jobsApi } from "@/lib/api/jobs";
+import { jobsApi, type MaterialType } from "@/lib/api/jobs";
 import type { JobCreate, JobUpdate, JobStatus } from "@/types/job";
 
 export function useJobs(
@@ -104,5 +104,32 @@ export function useSearchJobs(
         ...params,
       }),
     enabled: enabled && !!userId,
+  });
+}
+
+// Materials hooks
+
+export function useMaterials(jobId: string, materialType?: MaterialType) {
+  return useQuery({
+    queryKey: ["materials", jobId, materialType],
+    queryFn: () => jobsApi.getMaterials(jobId, materialType),
+    enabled: !!jobId,
+  });
+}
+
+export function useMaterial(jobId: string, materialType: MaterialType) {
+  return useQuery({
+    queryKey: ["material", jobId, materialType],
+    queryFn: () => jobsApi.getMaterial(jobId, materialType),
+    enabled: !!jobId && !!materialType,
+    retry: false, // Don't retry on 404 (no material yet)
+  });
+}
+
+export function useMaterialVersions(jobId: string, materialType: MaterialType) {
+  return useQuery({
+    queryKey: ["materialVersions", jobId, materialType],
+    queryFn: () => jobsApi.getMaterialVersions(jobId, materialType),
+    enabled: !!jobId && !!materialType,
   });
 }

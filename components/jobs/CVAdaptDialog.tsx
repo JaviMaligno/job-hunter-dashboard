@@ -30,10 +30,12 @@ import {
 import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload, ChevronDown } from "lucide-react";
 import { jobsApi, type CVAdaptResponse } from "@/lib/api/jobs";
 import { useUserCV, useUserCVContent } from "@/lib/hooks/useUser";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface CVAdaptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  jobId?: string; // If provided, materials will be saved to this job
   jobTitle: string;
   company: string;
   jobDescription?: string;
@@ -44,12 +46,14 @@ interface CVAdaptDialogProps {
 export function CVAdaptDialog({
   open,
   onOpenChange,
+  jobId,
   jobTitle,
   company,
   jobDescription,
   jobUrl,
   userId,
 }: CVAdaptDialogProps) {
+  const queryClient = useQueryClient();
   const [cvContent, setCvContent] = useState("");
   const [cvSource, setCvSource] = useState<"saved" | "paste">("paste");
   const [language, setLanguage] = useState<"auto" | "en" | "es">("auto");
@@ -95,6 +99,7 @@ export function CVAdaptDialog({
 
     try {
       const response = await jobsApi.adaptCV({
+        job_id: jobId, // Save materials to this job if provided
         cv_content: cvContent,
         job_description: jobDescription,
         job_url: jobUrl,
@@ -104,6 +109,11 @@ export function CVAdaptDialog({
       });
       setResult(response);
       setActiveTab("result");
+
+      // Invalidate materials query to refresh the list if materials were saved
+      if (jobId && response.material_ids?.length) {
+        queryClient.invalidateQueries({ queryKey: ["materials", jobId] });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to adapt CV");
     } finally {

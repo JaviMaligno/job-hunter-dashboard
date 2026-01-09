@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useJob } from "@/lib/hooks/useJobs";
+import { useJob, useMaterials } from "@/lib/hooks/useJobs";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -20,6 +20,9 @@ import {
   FileText,
   AlertCircle,
   Sparkles,
+  Mail,
+  Copy,
+  CheckCircle,
 } from "lucide-react";
 import { JobBlockerType, JobStatus } from "@/types/job";
 import { ApplicationModeSelector } from "@/components/jobs/ApplicationModeSelector";
@@ -33,8 +36,16 @@ export default function JobDetailPage() {
   const jobId = params.id as string;
   const userId = session?.user?.id;
   const { data: job, isLoading, error } = useJob(jobId);
+  const { data: materialsData } = useMaterials(jobId);
   const [showApplicationModal, setShowApplicationModal] = useState(false);
   const [showCVAdaptDialog, setShowCVAdaptDialog] = useState(false);
+  const [copiedMaterial, setCopiedMaterial] = useState<string | null>(null);
+
+  const handleCopyMaterial = (content: string, id: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedMaterial(id);
+    setTimeout(() => setCopiedMaterial(null), 2000);
+  };
 
   if (isLoading) {
     return (
@@ -283,11 +294,51 @@ export default function JobDetailPage() {
                 variant="secondary"
               >
                 <Sparkles className="mr-2 h-4 w-4" />
-                Adapt CV & Generate Cover Letter
+                {materialsData?.materials?.length ? "Regenerate Materials" : "Adapt CV & Generate Cover Letter"}
               </Button>
-              <p className="text-xs text-muted-foreground text-center">
-                AI will analyze the job requirements and adapt your CV
-              </p>
+
+              {/* Show saved materials */}
+              {materialsData?.materials?.length ? (
+                <div className="space-y-3 pt-2">
+                  {materialsData.materials.map((material) => (
+                    <div
+                      key={material.id}
+                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        {material.material_type === "cv" ? (
+                          <FileText className="h-4 w-4 text-blue-600" />
+                        ) : (
+                          <Mail className="h-4 w-4 text-green-600" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium">
+                            {material.material_type === "cv" ? "Adapted CV" : "Cover Letter"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            v{material.version} • {new Date(material.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyMaterial(material.content, material.id)}
+                      >
+                        {copiedMaterial === material.id ? (
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center">
+                  AI will analyze the job requirements and adapt your CV
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -307,6 +358,7 @@ export default function JobDetailPage() {
       <CVAdaptDialog
         open={showCVAdaptDialog}
         onOpenChange={setShowCVAdaptDialog}
+        jobId={job.id}
         jobTitle={job.title}
         company={job.company || "Unknown Company"}
         jobDescription={job.description_raw}
