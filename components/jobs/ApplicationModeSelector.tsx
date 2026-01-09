@@ -91,6 +91,19 @@ export function ApplicationModeSelector({
 
   const modes = [
     {
+      mode: ApplicationMode.MANUAL,
+      icon: ExternalLink,
+      title: "Apply Manually",
+      description: "Open job URL and apply yourself",
+      features: [
+        "Opens job posting in new tab",
+        "Copy your adapted CV",
+        "Copy cover letter",
+        "Track as applied when done",
+      ],
+      color: "purple",
+    },
+    {
       mode: ApplicationMode.ASSISTED,
       icon: PlayCircle,
       title: "Assisted Mode",
@@ -128,19 +141,6 @@ export function ApplicationModeSelector({
         "Use with caution",
       ],
       color: "orange",
-    },
-    {
-      mode: ApplicationMode.MANUAL,
-      icon: ExternalLink,
-      title: "Apply Manually",
-      description: "Open job URL and apply yourself",
-      features: [
-        "Opens job posting in new tab",
-        "Copy your adapted CV",
-        "Copy cover letter",
-        "Track as applied when done",
-      ],
-      color: "purple",
     },
   ];
 
