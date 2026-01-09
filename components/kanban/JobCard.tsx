@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Job, JobBlockerType } from "@/types/job";
-import { AlertCircle, MapPin, Building2 } from "lucide-react";
+import { AlertCircle, MapPin, Building2, Zap, Wifi, Home } from "lucide-react";
 
 interface JobCardProps {
   job: Job;
@@ -28,6 +28,22 @@ export function JobCard({ job, onClick }: JobCardProps) {
     return labels[type] || "Blocked";
   };
 
+  const getRemoteTypeBadge = () => {
+    if (!job.remote_type) return null;
+    const config = {
+      remote: { color: "bg-green-500", icon: Wifi, label: "Remote" },
+      hybrid: { color: "bg-blue-500", icon: Home, label: "Hybrid" },
+      onsite: { color: "bg-gray-500", icon: Building2, label: "Onsite" },
+    };
+    const { color, icon: Icon, label } = config[job.remote_type];
+    return (
+      <Badge className={`${color} text-white text-[10px] px-1.5 py-0 h-5`}>
+        <Icon className="h-2.5 w-2.5 mr-0.5" />
+        {label}
+      </Badge>
+    );
+  };
+
   return (
     <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -51,6 +67,19 @@ export function JobCard({ job, onClick }: JobCardProps) {
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3" />
               <span className="truncate">{job.location}</span>
+            </div>
+          )}
+
+          {/* Remote Type & Easy Apply Badges */}
+          {(job.remote_type || job.easy_apply) && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {getRemoteTypeBadge()}
+              {job.easy_apply && (
+                <Badge className="bg-amber-500 text-white text-[10px] px-1.5 py-0 h-5">
+                  <Zap className="h-2.5 w-2.5 mr-0.5" />
+                  Easy
+                </Badge>
+              )}
             </div>
           )}
 

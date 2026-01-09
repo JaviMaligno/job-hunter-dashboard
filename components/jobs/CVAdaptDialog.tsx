@@ -27,7 +27,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload, ChevronDown } from "lucide-react";
+import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload, ChevronDown, Plus, Pencil, Save } from "lucide-react";
 import { jobsApi, type CVAdaptResponse } from "@/lib/api/jobs";
 import { useUserCV, useUserCVContent } from "@/lib/hooks/useUser";
 import { useQueryClient } from "@tanstack/react-query";
@@ -61,6 +61,15 @@ export function CVAdaptDialog({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<CVAdaptResponse | null>(null);
   const [activeTab, setActiveTab] = useState("input");
+
+  // CV editing state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCV, setEditedCV] = useState("");
+
+  // Add skill dialog state
+  const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState("");
+  const [skillExplanation, setSkillExplanation] = useState("");
 
   // Load saved CV info
   const { data: savedCV } = useUserCV(userId || "");
@@ -187,9 +196,50 @@ export function CVAdaptDialog({
     return "text-red-600 bg-red-100";
   };
 
+  // Start editing the adapted CV
+  const handleStartEditing = () => {
+    if (result) {
+      setEditedCV(result.adapted_cv);
+      setIsEditing(true);
+    }
+  };
+
+  // Save edited CV
+  const handleSaveEditing = () => {
+    if (result && editedCV) {
+      setResult({
+        ...result,
+        adapted_cv: editedCV,
+      });
+      setIsEditing(false);
+    }
+  };
+
+  // Cancel editing
+  const handleCancelEditing = () => {
+    setIsEditing(false);
+    setEditedCV("");
+  };
+
+  // Open add skill dialog
+  const handleOpenAddSkillDialog = (skill: string) => {
+    setSelectedSkill(skill);
+    setSkillExplanation("");
+    setAddSkillDialogOpen(true);
+  };
+
+  // Handle add skill with AI (placeholder for now)
+  const handleAddSkillWithAI = () => {
+    // TODO: Implement backend call to enhance CV with the skill
+    console.log("Adding skill:", selectedSkill, "with explanation:", skillExplanation);
+    setAddSkillDialogOpen(false);
+    setSelectedSkill("");
+    setSkillExplanation("");
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-purple-600" />
@@ -212,8 +262,8 @@ export function CVAdaptDialog({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="input" className="flex-1 overflow-auto space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+          <TabsContent value="input" className="flex-1 overflow-auto space-y-4 mt-4 px-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-3 bg-muted rounded-lg">
                 <p className="text-sm font-medium">Job Title</p>
                 <p className="text-sm text-muted-foreground">{jobTitle}</p>
@@ -314,7 +364,7 @@ export function CVAdaptDialog({
             )}
           </TabsContent>
 
-          <TabsContent value="result" className="flex-1 overflow-auto space-y-4 mt-4">
+          <TabsContent value="result" className="flex-1 overflow-auto space-y-4 mt-4 px-1">
             {result && (
               <>
                 {/* Match Score & Language */}
@@ -337,7 +387,7 @@ export function CVAdaptDialog({
                 </div>
 
                 {/* Skills Analysis */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <p className="text-sm font-medium flex items-center gap-1">
                       <CheckCircle className="h-4 w-4 text-green-600" />
@@ -358,11 +408,20 @@ export function CVAdaptDialog({
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {result.skills_missing.map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-red-700 border-red-300">
+                        <Badge
+                          key={skill}
+                          variant="outline"
+                          className="text-red-700 border-red-300 cursor-pointer hover:bg-red-50 transition-colors"
+                          onClick={() => handleOpenAddSkillDialog(skill)}
+                        >
+                          <Plus className="h-3 w-3 mr-1" />
                           {skill}
                         </Badge>
                       ))}
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Click a skill to add it to your CV
+                    </p>
                   </div>
                 </div>
 
@@ -402,39 +461,63 @@ export function CVAdaptDialog({
                     <p className="text-sm font-medium flex items-center gap-2">
                       <FileText className="h-4 w-4" />
                       Adapted CV
+                      {isEditing && (
+                        <Badge variant="secondary" className="text-xs">
+                          Editing
+                        </Badge>
+                      )}
                     </p>
                     <div className="flex gap-2">
-                      <Button size="sm" variant="outline" onClick={() => handleCopy(result.adapted_cv, "CV")}>
-                        <Copy className="h-3 w-3 mr-1" />
-                        Copy
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="outline">
-                            <Download className="h-3 w-3 mr-1" />
-                            Download
-                            <ChevronDown className="h-3 w-3 ml-1" />
+                      {isEditing ? (
+                        <>
+                          <Button size="sm" variant="outline" onClick={handleCancelEditing}>
+                            Cancel
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent>
-                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "txt")}>
-                            TXT (Plain Text)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "docx")}>
-                            DOCX (Word)
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "pdf")}>
-                            PDF
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          <Button size="sm" onClick={handleSaveEditing}>
+                            <Save className="h-3 w-3 mr-1" />
+                            Save Changes
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button size="sm" variant="outline" onClick={handleStartEditing}>
+                            <Pencil className="h-3 w-3 mr-1" />
+                            Edit CV
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => handleCopy(result.adapted_cv, "CV")}>
+                            <Copy className="h-3 w-3 mr-1" />
+                            Copy
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                <Download className="h-3 w-3 mr-1" />
+                                Download
+                                <ChevronDown className="h-3 w-3 ml-1" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "txt")}>
+                                TXT (Plain Text)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "docx")}>
+                                DOCX (Word)
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDownloadFormat(result.adapted_cv, "cv", "pdf")}>
+                                PDF
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
                     </div>
                   </div>
                   <Textarea
-                    value={result.adapted_cv}
-                    readOnly
+                    value={isEditing ? editedCV : result.adapted_cv}
+                    onChange={(e) => isEditing && setEditedCV(e.target.value)}
+                    readOnly={!isEditing}
                     rows={8}
-                    className="font-mono text-xs"
+                    className={`font-mono text-xs ${isEditing ? "border-purple-400 focus:border-purple-500" : ""}`}
                   />
                 </div>
 
@@ -508,6 +591,51 @@ export function CVAdaptDialog({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {/* Add Skill Dialog */}
+      <Dialog open={addSkillDialogOpen} onOpenChange={setAddSkillDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5 text-purple-600" />
+              Add &ldquo;{selectedSkill}&rdquo; to your CV
+            </DialogTitle>
+            <DialogDescription>
+              Describe your experience with this skill. The AI will help incorporate it into your CV naturally.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="skill-explanation">Your experience with {selectedSkill}</Label>
+              <Textarea
+                id="skill-explanation"
+                placeholder={`Describe how you have used ${selectedSkill}...\n\nExamples:\n- Projects where you used it\n- Years of experience\n- Certifications or training\n- Specific achievements`}
+                value={skillExplanation}
+                onChange={(e) => setSkillExplanation(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Be specific about your experience. The AI will integrate this information into your CV in a professional way.
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddSkillDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSkillWithAI}
+              disabled={!skillExplanation.trim()}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Add with AI
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

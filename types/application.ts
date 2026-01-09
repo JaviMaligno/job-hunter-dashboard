@@ -10,6 +10,7 @@ export enum ApplicationMode {
   ASSISTED = "assisted",
   SEMI_AUTO = "semi_auto",
   AUTO = "auto",
+  MANUAL = "manual",
 }
 
 export interface CustomQuestion {

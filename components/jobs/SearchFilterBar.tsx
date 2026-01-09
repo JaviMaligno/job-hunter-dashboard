@@ -65,8 +65,8 @@ export function SearchFilterBar({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex flex-col sm:flex-row gap-2">
+        <div className="relative flex-1 w-full sm:max-w-md">
           <Icons.search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search jobs by title, company, location..."
@@ -76,37 +76,39 @@ export function SearchFilterBar({
             className="pl-10"
           />
         </div>
-        <Button onClick={handleSearch} disabled={isSearching}>
-          {isSearching ? (
-            <Icons.spinner className="h-4 w-4 animate-spin" />
-          ) : (
-            "Search"
-          )}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() => setShowFilters(!showFilters)}
-          className={showFilters ? "bg-accent" : ""}
-        >
-          <Icons.filter className="h-4 w-4 mr-2" />
-          Filters
-        </Button>
-        {hasActiveFilters && (
-          <Button variant="ghost" onClick={handleClear}>
-            <Icons.x className="h-4 w-4 mr-2" />
-            Clear
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={handleSearch} disabled={isSearching} className="flex-1 sm:flex-none">
+            {isSearching ? (
+              <Icons.spinner className="h-4 w-4 animate-spin" />
+            ) : (
+              "Search"
+            )}
           </Button>
-        )}
+          <Button
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex-1 sm:flex-none ${showFilters ? "bg-accent" : ""}`}
+          >
+            <Icons.filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+          {hasActiveFilters && (
+            <Button variant="ghost" onClick={handleClear} className="flex-1 sm:flex-none">
+              <Icons.x className="h-4 w-4 mr-2" />
+              Clear
+            </Button>
+          )}
+        </div>
       </div>
 
       {showFilters && (
-        <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-md">
-          <span className="text-sm text-muted-foreground mr-2">Status:</span>
+        <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-md">
+          <span className="text-sm text-muted-foreground w-full sm:w-auto mb-1 sm:mb-0 sm:mr-2">Status:</span>
           {STATUS_OPTIONS.map((option) => (
             <Badge
               key={option.value}
               variant={selectedStatus === option.value ? "default" : "outline"}
-              className="cursor-pointer"
+              className="cursor-pointer text-xs sm:text-sm"
               onClick={() =>
                 setSelectedStatus(
                   selectedStatus === option.value ? undefined : option.value

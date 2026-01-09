@@ -80,7 +80,7 @@ export function Board({ jobs, onJobClick }: BoardProps) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex flex-col sm:flex-row gap-4 sm:overflow-x-auto pb-4">
         {COLUMNS.map((column) => (
           <Column
             key={column.status}

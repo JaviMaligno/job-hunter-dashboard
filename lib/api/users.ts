@@ -134,6 +134,13 @@ export const usersApi = {
     });
   },
 
+  // Process single email by ID
+  processEmailById: async (userId: string, messageId: string): Promise<any> => {
+    return apiClient<any>(`/api/gmail/process/${messageId}?user_id=${userId}`, {
+      method: "POST",
+    });
+  },
+
   // CV management
   getCV: async (userId: string): Promise<CVResponse> => {
     return apiClient<CVResponse>(`/api/users/${userId}/cv`);

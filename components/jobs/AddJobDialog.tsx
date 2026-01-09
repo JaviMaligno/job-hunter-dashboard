@@ -190,7 +190,7 @@ export function AddJobDialog({ userId, children }: AddJobDialogProps) {
 
           <TabsContent value="manual" className="space-y-4 mt-4">
             <form onSubmit={manualForm.handleSubmit(onManualSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Job Title *</Label>
                   <Input
@@ -213,7 +213,7 @@ export function AddJobDialog({ userId, children }: AddJobDialogProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="location">Location</Label>
                   <Input

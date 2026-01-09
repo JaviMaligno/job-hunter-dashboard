@@ -20,7 +20,7 @@ export function Column({ status, title, jobs, onJobClick }: ColumnProps) {
   });
 
   return (
-    <div className="flex flex-col gap-2 min-w-[280px] max-w-[280px]">
+    <div className="flex flex-col gap-2 w-full sm:min-w-[280px] sm:max-w-[280px] flex-shrink-0">
       {/* Column Header */}
       <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
         <h2 className="font-semibold text-sm">{title}</h2>
@@ -30,7 +30,7 @@ export function Column({ status, title, jobs, onJobClick }: ColumnProps) {
       {/* Droppable Area */}
       <div
         ref={setNodeRef}
-        className="flex-1 space-y-2 p-2 bg-muted/30 rounded-lg min-h-[500px]"
+        className="flex-1 space-y-2 p-2 bg-muted/30 rounded-lg min-h-[200px] sm:min-h-[500px]"
       >
         <SortableContext
           items={jobs.map((job) => job.id)}

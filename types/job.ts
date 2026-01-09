@@ -17,6 +17,9 @@ export enum JobBlockerType {
   OTHER = "other",
 }
 
+export type RemoteType = "remote" | "hybrid" | "onsite";
+export type EmploymentType = "full-time" | "part-time" | "contract" | "internship";
+
 export interface Job {
   id: string;
   user_id: string;
@@ -30,6 +33,9 @@ export interface Job {
   description_summary?: string;
   requirements_extracted?: string[];
   salary_range?: string;
+  remote_type?: RemoteType | null;
+  employment_type?: EmploymentType | null;
+  easy_apply?: boolean;
   match_score?: number;
   skills_matched?: string[];
   skills_missing?: string[];

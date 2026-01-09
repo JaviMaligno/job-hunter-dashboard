@@ -23,7 +23,20 @@ import {
   Mail,
   Copy,
   CheckCircle,
+  Download,
+  ChevronDown,
+  Zap,
+  Wifi,
+  Home,
+  Briefcase,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { jobsApi } from "@/lib/api/jobs";
 import { JobBlockerType, JobStatus } from "@/types/job";
 import { ApplicationModeSelector } from "@/components/jobs/ApplicationModeSelector";
 import { CVAdaptDialog } from "@/components/jobs/CVAdaptDialog";
@@ -45,6 +58,56 @@ export default function JobDetailPage() {
     navigator.clipboard.writeText(content);
     setCopiedMaterial(id);
     setTimeout(() => setCopiedMaterial(null), 2000);
+  };
+
+  const handleDownload = async (
+    content: string,
+    materialType: string,
+    format: "txt" | "docx" | "pdf"
+  ) => {
+    const typeNames: Record<string, string> = {
+      cv: "CV",
+      cover_letter: "CoverLetter",
+      talking_points: "TalkingPoints",
+    };
+    const typeName = typeNames[materialType] || "Document";
+    const filename = `${typeName}_${job?.company || "Company"}_${job?.title || "Job"}.${format}`;
+
+    if (format === "txt") {
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
+
+    // Only cv and cover_letter support DOCX/PDF generation
+    if (materialType !== "cv" && materialType !== "cover_letter") {
+      console.warn(`Document generation not supported for ${materialType}`);
+      return;
+    }
+
+    try {
+      const blob = await jobsApi.generateDocument({
+        content,
+        format,
+        doc_type: materialType as "cv" | "cover_letter",
+        job_title: job?.title || "",
+        company: job?.company || "",
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(`Failed to generate ${format.toUpperCase()}:`, err);
+    }
   };
 
   if (isLoading) {
@@ -254,6 +317,45 @@ export default function JobDetailPage() {
               <CardTitle>Quick Info</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              {/* Easy Apply Badge */}
+              {job.easy_apply && (
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
+                    <Zap className="h-3 w-3 mr-1" />
+                    Easy Apply
+                  </Badge>
+                </div>
+              )}
+              {/* Remote Type */}
+              {job.remote_type && (
+                <div>
+                  <p className="text-muted-foreground">Remote Type</p>
+                  <Badge
+                    className={
+                      job.remote_type === "remote"
+                        ? "bg-green-500 hover:bg-green-600 text-white"
+                        : job.remote_type === "hybrid"
+                          ? "bg-blue-500 hover:bg-blue-600 text-white"
+                          : "bg-gray-500 hover:bg-gray-600 text-white"
+                    }
+                  >
+                    {job.remote_type === "remote" && <Wifi className="h-3 w-3 mr-1" />}
+                    {job.remote_type === "hybrid" && <Home className="h-3 w-3 mr-1" />}
+                    {job.remote_type === "onsite" && <Building2 className="h-3 w-3 mr-1" />}
+                    {job.remote_type.charAt(0).toUpperCase() + job.remote_type.slice(1)}
+                  </Badge>
+                </div>
+              )}
+              {/* Employment Type */}
+              {job.employment_type && (
+                <div>
+                  <p className="text-muted-foreground">Employment Type</p>
+                  <div className="flex items-center gap-1">
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium capitalize">{job.employment_type.replace("-", " ")}</span>
+                  </div>
+                </div>
+              )}
               {job.salary_range && (
                 <div>
                   <p className="text-muted-foreground">Salary Range</p>
@@ -320,17 +422,44 @@ export default function JobDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleCopyMaterial(material.content, material.id)}
-                      >
-                        {copiedMaterial === material.id ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleCopyMaterial(material.content, material.id)}
+                        >
+                          {copiedMaterial === material.id ? (
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="sm" variant="ghost">
+                              <Download className="h-4 w-4" />
+                              <ChevronDown className="h-3 w-3 ml-1" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuItem
+                              onClick={() => handleDownload(material.content, material.material_type, "txt")}
+                            >
+                              TXT (Plain Text)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDownload(material.content, material.material_type, "docx")}
+                            >
+                              DOCX (Word)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDownload(material.content, material.material_type, "pdf")}
+                            >
+                              PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   ))}
                 </div>

@@ -15,7 +15,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Settings2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Mail, CheckCircle, XCircle, Loader2, ExternalLink, Tag, MailCheck, Settings2, Search, FileText } from "lucide-react";
 import type { EmailScanResponse } from "@/lib/api/users";
 import {
   AlertDialog,
@@ -48,6 +49,12 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<EmailScanResponse | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
+
+  // Process email by ID state
+  const [messageId, setMessageId] = useState("");
+  const [isProcessingById, setIsProcessingById] = useState(false);
+  const [processResult, setProcessResult] = useState<any | null>(null);
+  const [processError, setProcessError] = useState<string | null>(null);
 
   // Initialize permission state from current status
   useEffect(() => {
@@ -164,6 +171,25 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
       setScanError(error instanceof Error ? error.message : "Failed to scan emails");
     } finally {
       setIsScanning(false);
+    }
+  };
+
+  const handleProcessById = async () => {
+    if (!messageId.trim()) return;
+
+    setIsProcessingById(true);
+    setProcessResult(null);
+    setProcessError(null);
+    try {
+      const result = await usersApi.processEmailById(userId, messageId.trim());
+      setProcessResult(result);
+      setMessageId(""); // Clear input on success
+      refetch(); // Refresh status
+    } catch (error) {
+      console.error("Failed to process email:", error);
+      setProcessError(error instanceof Error ? error.message : "Failed to process email");
+    } finally {
+      setIsProcessingById(false);
     }
   };
 
@@ -297,6 +323,61 @@ function GmailConnectionContent({ userId }: GmailConnectionProps) {
               {scanError && (
                 <div className="p-4 border rounded-lg bg-red-50 dark:bg-red-950">
                   <p className="text-sm text-red-700 dark:text-red-300">{scanError}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Process email by ID section */}
+            <div className="space-y-3 p-4 border rounded-lg bg-muted/30">
+              <div className="space-y-1.5">
+                <Label htmlFor="message-id" className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Process Email by ID
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Enter Gmail message ID (found in URL after #inbox/)
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  id="message-id"
+                  type="text"
+                  placeholder="e.g., 18d1234567890abc"
+                  value={messageId}
+                  onChange={(e) => setMessageId(e.target.value)}
+                  className="flex-1"
+                />
+                <Button
+                  onClick={handleProcessById}
+                  disabled={isProcessingById || !messageId.trim()}
+                  variant="secondary"
+                >
+                  {isProcessingById ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Process"
+                  )}
+                </Button>
+              </div>
+
+              {/* Process result */}
+              {processResult && (
+                <div className="p-3 border rounded-lg bg-green-50 dark:bg-green-950">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    Email processed successfully!
+                    {processResult.jobs_extracted !== undefined && (
+                      <span className="ml-1">
+                        {processResult.jobs_extracted} job(s) extracted.
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
+              {/* Process error */}
+              {processError && (
+                <div className="p-3 border rounded-lg bg-red-50 dark:bg-red-950">
+                  <p className="text-sm text-red-700 dark:text-red-300">{processError}</p>
                 </div>
               )}
             </div>
