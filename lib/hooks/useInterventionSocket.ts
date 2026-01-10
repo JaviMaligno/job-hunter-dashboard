@@ -64,7 +64,6 @@ export function useInterventionSocket(
       ws.onopen = () => {
         setIsConnected(true);
         setError(null);
-        console.log("Intervention WebSocket connected");
       };
 
       ws.onmessage = (event) => {
@@ -111,35 +110,35 @@ export function useInterventionSocket(
               break;
 
             default:
-              console.log("Unknown WS message:", message);
+              // Ignore unknown message types
+              break;
           }
-        } catch (err) {
-          console.error("Failed to parse WS message:", err);
+        } catch {
+          // Silently ignore parse errors
         }
       };
 
-      ws.onerror = (event) => {
-        console.error("WebSocket error:", event);
-        setError("Connection error");
+      ws.onerror = () => {
+        // Error event doesn't contain useful info - wait for close
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setIsConnected(false);
         wsRef.current = null;
-        console.log("Intervention WebSocket disconnected");
 
-        // Auto-reconnect
-        if (autoReconnect) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log("Attempting to reconnect...");
-            connect();
-          }, reconnectInterval);
+        // Set error for abnormal closures
+        if (event.code !== 1000 && event.code !== 1001) {
+          setError("Connection lost");
+        }
+
+        // Auto-reconnect for unexpected disconnections
+        if (autoReconnect && event.code !== 1000) {
+          reconnectTimeoutRef.current = setTimeout(connect, reconnectInterval);
         }
       };
 
       wsRef.current = ws;
-    } catch (err) {
-      console.error("Failed to create WebSocket:", err);
+    } catch {
       setError("Failed to connect");
     }
   }, [autoReconnect, reconnectInterval]); // Removed callback dependencies
@@ -181,9 +180,10 @@ export function useInterventionSocket(
   };
 }
 
-// Hook for session-specific updates
+// Hook for session-specific updates (V2 API)
 export function useSessionSocket(sessionId: string | null) {
   const [isConnected, setIsConnected] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [progress, setProgress] = useState<{
     step: number;
@@ -195,41 +195,59 @@ export function useSessionSocket(sessionId: string | null) {
   useEffect(() => {
     if (!sessionId) return;
 
-    const ws = new WebSocket(
-      `${WS_URL}/api/applications/v2/ws/${sessionId}`
-    );
+    try {
+      const ws = new WebSocket(
+        `${WS_URL}/api/applications/v2/ws/${sessionId}`
+      );
 
-    ws.onopen = () => setIsConnected(true);
+      ws.onopen = () => {
+        setIsConnected(true);
+        setError(null);
+      };
 
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
 
-        if (message.type === "connected" || message.type === "status") {
-          setStatus(message.payload.status);
-          setProgress({
-            step: message.payload.current_step,
-            fieldsFilled: message.payload.fields_filled,
-          });
-        } else if (message.type === "progress") {
-          setProgress({
-            step: message.payload.progress_percent,
-            fieldsFilled: message.payload.details?.fields_filled || 0,
-          });
+          if (message.type === "connected" || message.type === "status") {
+            setStatus(message.payload.status);
+            setProgress({
+              step: message.payload.current_step,
+              fieldsFilled: message.payload.fields_filled,
+            });
+          } else if (message.type === "progress") {
+            setProgress({
+              step: message.payload.progress_percent,
+              fieldsFilled: message.payload.details?.fields_filled || 0,
+            });
+          }
+        } catch {
+          // Silently ignore parse errors
         }
-      } catch (err) {
-        console.error("Failed to parse session WS message:", err);
-      }
-    };
+      };
 
-    ws.onclose = () => setIsConnected(false);
+      ws.onerror = () => {
+        // Wait for close event
+      };
 
-    wsRef.current = ws;
+      ws.onclose = (event) => {
+        setIsConnected(false);
+        if (event.code === 4004) {
+          setError("Session not found");
+        } else if (event.code !== 1000 && event.code !== 1001) {
+          setError("Connection lost");
+        }
+      };
 
-    return () => {
-      ws.close();
-    };
+      wsRef.current = ws;
+
+      return () => {
+        ws.close(1000, "Component unmounted");
+      };
+    } catch {
+      setError("Failed to connect");
+    }
   }, [sessionId]);
 
-  return { isConnected, status, progress };
+  return { isConnected, status, progress, error };
 }

@@ -16,7 +16,7 @@ export default function ApplicationTrackingPage() {
   const sessionId = params.sessionId as string;
 
   const { data: application, isLoading } = useApplicationStatus(sessionId);
-  const { isConnected, lastMessage } = useApplicationWebSocket(sessionId);
+  const { isConnected, lastMessage, connectionError } = useApplicationWebSocket(sessionId);
   const pauseMutation = usePauseApplication();
   const resumeMutation = useResumeApplication();
   const submitMutation = useSubmitApplication();
@@ -137,11 +137,11 @@ export default function ApplicationTrackingPage() {
             <div className="flex items-center gap-2 text-sm">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  isConnected ? "bg-green-500" : "bg-gray-400"
+                  isConnected ? "bg-green-500" : connectionError ? "bg-red-500" : "bg-yellow-500"
                 }`}
               />
               <span className="text-muted-foreground">
-                {isConnected ? "Live" : "Disconnected"}
+                {isConnected ? "Live" : connectionError ? connectionError : "Connecting..."}
               </span>
             </div>
           </div>
