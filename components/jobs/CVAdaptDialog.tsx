@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Loader2, FileText, Mail, Sparkles, CheckCircle, XCircle, Copy, Download, Upload, ChevronDown, Plus, Pencil, Save } from "lucide-react";
-import { jobsApi, type CVAdaptResponse } from "@/lib/api/jobs";
+import { jobsApi, type CVAdaptResponse, type CVEnhanceResponse } from "@/lib/api/jobs";
 import { useUserCV, useUserCVContent } from "@/lib/hooks/useUser";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -70,6 +70,7 @@ export function CVAdaptDialog({
   const [addSkillDialogOpen, setAddSkillDialogOpen] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState("");
   const [skillExplanation, setSkillExplanation] = useState("");
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   // Load saved CV info
   const { data: savedCV } = useUserCV(userId || "");
@@ -228,13 +229,37 @@ export function CVAdaptDialog({
     setAddSkillDialogOpen(true);
   };
 
-  // Handle add skill with AI (placeholder for now)
-  const handleAddSkillWithAI = () => {
-    // TODO: Implement backend call to enhance CV with the skill
-    console.log("Adding skill:", selectedSkill, "with explanation:", skillExplanation);
-    setAddSkillDialogOpen(false);
-    setSelectedSkill("");
-    setSkillExplanation("");
+  // Handle add skill with AI
+  const handleAddSkillWithAI = async () => {
+    if (!result || !skillExplanation.trim()) return;
+
+    setIsEnhancing(true);
+    try {
+      const response = await jobsApi.enhanceCV({
+        cv_content: result.adapted_cv,
+        skill_name: selectedSkill,
+        skill_explanation: skillExplanation,
+        job_title: jobTitle,
+        company: company,
+      });
+
+      // Update the result with the enhanced CV
+      setResult({
+        ...result,
+        adapted_cv: response.enhanced_cv,
+        skills_missing: result.skills_missing.filter((s) => s !== selectedSkill),
+        skills_matched: [...result.skills_matched, selectedSkill],
+        changes_made: [...result.changes_made, ...response.changes_made],
+      });
+
+      setAddSkillDialogOpen(false);
+      setSelectedSkill("");
+      setSkillExplanation("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to enhance CV");
+    } finally {
+      setIsEnhancing(false);
+    }
   };
 
   return (
@@ -623,15 +648,24 @@ export function CVAdaptDialog({
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddSkillDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setAddSkillDialogOpen(false)} disabled={isEnhancing}>
               Cancel
             </Button>
             <Button
               onClick={handleAddSkillWithAI}
-              disabled={!skillExplanation.trim()}
+              disabled={!skillExplanation.trim() || isEnhancing}
             >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Add with AI
+              {isEnhancing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Enhancing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Add with AI
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

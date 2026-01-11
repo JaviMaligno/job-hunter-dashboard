@@ -62,6 +62,21 @@ export interface CVAdaptResponse {
   material_ids?: string[];
 }
 
+// CV Enhancement types
+export interface CVEnhanceRequest {
+  cv_content: string;
+  skill_name: string;
+  skill_explanation: string;
+  job_title?: string;
+  company?: string;
+}
+
+export interface CVEnhanceResponse {
+  enhanced_cv: string;
+  skill_added: string;
+  changes_made: string[];
+}
+
 export const jobsApi = {
   list: async (params: {
     user_id: string;
@@ -146,6 +161,17 @@ export const jobsApi = {
    */
   adaptCV: async (request: CVAdaptRequest): Promise<CVAdaptResponse> => {
     return apiClient<CVAdaptResponse>("/api/jobs/adapt", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  },
+
+  /**
+   * Enhance CV by adding a skill based on user's explanation.
+   * Uses AI to naturally integrate the skill into the CV.
+   */
+  enhanceCV: async (request: CVEnhanceRequest): Promise<CVEnhanceResponse> => {
+    return apiClient<CVEnhanceResponse>("/api/jobs/enhance", {
       method: "POST",
       body: JSON.stringify(request),
     });
