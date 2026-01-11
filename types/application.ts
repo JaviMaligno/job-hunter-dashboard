@@ -11,6 +11,7 @@ export enum ApplicationMode {
   SEMI_AUTO = "semi_auto",
   AUTO = "auto",
   MANUAL = "manual",
+  LOCAL_BROWSER = "local_browser",
 }
 
 export interface CustomQuestion {

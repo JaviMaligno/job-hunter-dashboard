@@ -13,10 +13,12 @@ import { Badge } from "@/components/ui/badge";
 import { useStartApplication } from "@/lib/hooks/useApplications";
 import { ApplicationMode, UserFormData } from "@/types/application";
 import { useRouter } from "next/navigation";
-import { X, PlayCircle, PauseCircle, Zap, Loader2, ExternalLink, Copy, Check } from "lucide-react";
+import { X, PlayCircle, PauseCircle, Zap, Loader2, ExternalLink, Copy, Check, Chrome } from "lucide-react";
 import { usersApi } from "@/lib/api/users";
 import { useUpdateJobStatus, useMaterial } from "@/lib/hooks/useJobs";
 import { JobStatus } from "@/types/job";
+import { useExtension } from "@/lib/hooks/useExtension";
+import { LocalApplicationFlow } from "@/components/applications/LocalApplicationFlow";
 
 interface ApplicationModeSelectorProps {
   jobId: string;
@@ -39,11 +41,13 @@ export function ApplicationModeSelector({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showManualMode, setShowManualMode] = useState(false);
+  const [showLocalBrowserMode, setShowLocalBrowserMode] = useState(false);
   const [cvCopied, setCvCopied] = useState(false);
   const [coverLetterCopied, setCoverLetterCopied] = useState(false);
   const startApplication = useStartApplication(userId);
   const updateJobStatus = useUpdateJobStatus();
   const router = useRouter();
+  const { isExtensionConnected, refreshStatus } = useExtension();
 
   // Fetch adapted materials for manual mode
   const { data: adaptedCV } = useMaterial(jobId, "cv");
@@ -91,6 +95,20 @@ export function ApplicationModeSelector({
 
   const modes = [
     {
+      mode: ApplicationMode.LOCAL_BROWSER,
+      icon: Chrome,
+      title: "Local Browser",
+      description: "Apply in YOUR browser with AI help",
+      features: [
+        "Opens in your Chrome browser",
+        "You see everything happen live",
+        "AI fills, you submit",
+        "Best for interactive sites",
+      ],
+      color: "cyan",
+      requiresExtension: true,
+    },
+    {
       mode: ApplicationMode.MANUAL,
       icon: ExternalLink,
       title: "Apply Manually",
@@ -106,11 +124,11 @@ export function ApplicationModeSelector({
     {
       mode: ApplicationMode.ASSISTED,
       icon: PlayCircle,
-      title: "Assisted Mode",
-      description: "You review and approve each step",
+      title: "Cloud Assisted",
+      description: "AI fills in cloud browser",
       features: [
         "AI fills out the form",
-        "You review before submission",
+        "Screenshots for review",
         "Manual control over submission",
         "No rate limits",
       ],
@@ -175,8 +193,14 @@ export function ApplicationModeSelector({
       green: "border-green-500",
       orange: "border-orange-500",
       purple: "border-purple-500",
+      cyan: "border-cyan-500",
     };
     return colors[color] || "border-gray-500";
+  };
+
+  // Handle local browser mode selection
+  const handleLocalBrowserStart = () => {
+    setShowLocalBrowserMode(true);
   };
 
   // Handle manual mode - copy to clipboard
@@ -382,12 +406,34 @@ export function ApplicationModeSelector({
             </div>
           )}
 
-          {/* Mode Cards - Only show when ready and not in manual mode view */}
-          {isReady && !showManualMode && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Local Browser Mode View */}
+          {showLocalBrowserMode && (
+            <LocalApplicationFlow
+              jobUrl={jobUrl}
+              jobTitle="Job Application"
+              company="Company"
+              userId={userId}
+              cvContent={adaptedCV?.content || cvContent || undefined}
+              coverLetter={coverLetter?.content}
+              onComplete={async () => {
+                await updateJobStatus.mutateAsync({
+                  id: jobId,
+                  status: JobStatus.APPLIED,
+                });
+                onClose();
+              }}
+              onCancel={() => setShowLocalBrowserMode(false)}
+            />
+          )}
+
+          {/* Mode Cards - Only show when ready and not in other mode views */}
+          {isReady && !showManualMode && !showLocalBrowserMode && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {modes.map((modeOption) => {
               const Icon = modeOption.icon;
               const isSelected = selectedMode === modeOption.mode;
+              const needsExtension = (modeOption as any).requiresExtension;
+              const extensionReady = needsExtension ? isExtensionConnected : true;
 
               return (
                 <button
@@ -397,7 +443,7 @@ export function ApplicationModeSelector({
                     isSelected
                       ? `${getBorderColor(modeOption.color)} bg-muted`
                       : "border-muted hover:border-gray-400"
-                  }`}
+                  } ${!extensionReady ? "opacity-60" : ""}`}
                 >
                   <div className="flex items-start gap-3 mb-3">
                     <Icon className={`h-6 w-6 text-${modeOption.color}-600`} />
@@ -408,6 +454,20 @@ export function ApplicationModeSelector({
                       </p>
                     </div>
                   </div>
+
+                  {needsExtension && (
+                    <div className="mb-2">
+                      {isExtensionConnected ? (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                          Extension Ready
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
+                          Extension Required
+                        </Badge>
+                      )}
+                    </div>
+                  )}
 
                   <ul className="space-y-1">
                     {modeOption.features.map((feature, idx) => (
@@ -422,13 +482,22 @@ export function ApplicationModeSelector({
             })}
           </div>)}
 
-          {/* Action Buttons - Only show when not in manual mode view */}
-          {!showManualMode && (
+          {/* Action Buttons - Only show when not in other mode views */}
+          {!showManualMode && !showLocalBrowserMode && (
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            {selectedMode === ApplicationMode.MANUAL ? (
+            {selectedMode === ApplicationMode.LOCAL_BROWSER ? (
+              <Button
+                onClick={handleLocalBrowserStart}
+                disabled={!isReady || !isExtensionConnected}
+                className="bg-cyan-600 hover:bg-cyan-700"
+              >
+                <Chrome className="h-4 w-4 mr-1" />
+                {!isExtensionConnected ? "Extension Not Connected" : "Start in Your Browser"}
+              </Button>
+            ) : selectedMode === ApplicationMode.MANUAL ? (
               <Button
                 onClick={handleManualModeStart}
                 disabled={!isReady}
