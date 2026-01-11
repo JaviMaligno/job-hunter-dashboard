@@ -9,13 +9,31 @@ A modern, real-time dashboard for managing automated job applications built with
 - **Drag & drop**: Move jobs between stages with smooth animations
 - **Job cards**: Display title, company, location, match score, and blocker status
 - **Click to view**: Navigate to detailed job view
+- **Responsive**: Works on mobile (vertical) and desktop (horizontal scroll)
 
 ### Job Detail Page
 - **Comprehensive info**: Full job description, requirements, salary
 - **Skills analysis**: Matched and missing skills breakdown
-- **Application materials**: Download adapted CV and cover letter
-- **Start application**: Choose between Assisted, Semi-Auto, or Full Auto modes
+- **Application materials**: Download adapted CV and cover letter (TXT, DOCX, PDF)
+- **5 Application Modes**:
+  - **Local Browser**: AI fills forms in YOUR browser via Chrome extension
+  - **Manual**: Opens job URL, you apply yourself
+  - **Cloud Assisted**: AI fills in cloud browser, you review
+  - **Semi-Auto**: AI fills and auto-submits unless blocked
+  - **Full Auto**: Fully automated
 - **Blocker warnings**: Clear indicators when manual intervention is needed
+
+### Local Browser Mode (Chrome Extension)
+- **Extension Connected** badge shows real-time connection status
+- **Progress tracking**: Step-by-step progress (Extension → Page Opened → Form Analyzed → Filled)
+- **Fields preview**: See what will be filled before clicking "Fill Form"
+- **User control**: You see everything happen in your browser
+
+### Automation Center (/interventions)
+- **Clickable session cards**: View detailed session info
+- **Session details modal**: Shows blocker reason, fields filled/remaining, progress
+- **Actions**: Resume, Open URL, Mark as Applied
+- **Real-time updates**: WebSocket connection for live status
 
 ### Real-time Application Tracking
 - **Live WebSocket updates**: See form filling progress in real-time
