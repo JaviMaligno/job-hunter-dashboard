@@ -619,35 +619,96 @@ export function CVAdaptDialog({
 
       {/* Add Skill Dialog */}
       <Dialog open={addSkillDialogOpen} onOpenChange={setAddSkillDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5 text-purple-600" />
               Add &ldquo;{selectedSkill}&rdquo; to your CV
             </DialogTitle>
             <DialogDescription>
-              Describe your experience with this skill. The AI will help incorporate it into your CV naturally.
+              Explain your experience with this skill in detail. The more context you provide, the better the AI can integrate it naturally into your CV.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="flex-1 overflow-auto space-y-4 py-4">
+            {/* Guidance Section */}
+            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+              <p className="text-sm font-medium">What to include:</p>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-600">•</span>
+                  <span><strong>Projects:</strong> Where and how you used {selectedSkill}</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-600">•</span>
+                  <span><strong>Experience level:</strong> Years, proficiency (beginner/intermediate/expert)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-600">•</span>
+                  <span><strong>Achievements:</strong> Results, metrics, impact you delivered</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-purple-600">•</span>
+                  <span><strong>Context:</strong> Why you learned it, courses, certifications</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Main Textarea */}
             <div className="space-y-2">
-              <Label htmlFor="skill-explanation">Your experience with {selectedSkill}</Label>
+              <Label htmlFor="skill-explanation" className="text-base font-medium">
+                Your experience with {selectedSkill}
+              </Label>
               <Textarea
                 id="skill-explanation"
-                placeholder={`Describe how you have used ${selectedSkill}...\n\nExamples:\n- Projects where you used it\n- Years of experience\n- Certifications or training\n- Specific achievements`}
+                placeholder={`Example for "${selectedSkill}":
+
+I have 3 years of experience with ${selectedSkill}, primarily using it in my role at [Company] where I:
+
+- Led the implementation of [specific project] using ${selectedSkill}
+- Achieved [specific result/metric] by applying ${selectedSkill} to [problem]
+- Collaborated with the team to [outcome]
+
+I learned ${selectedSkill} through [course/self-study/work] and have [certification if any].
+
+The more detail you provide, the better the AI can enhance your CV!`}
                 value={skillExplanation}
                 onChange={(e) => setSkillExplanation(e.target.value)}
-                rows={6}
-                className="resize-none"
+                rows={12}
+                className="resize-none font-mono text-sm"
               />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Be as detailed as possible - this context helps the AI write better content</span>
+                <span>{skillExplanation.length} characters</span>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Be specific about your experience. The AI will integrate this information into your CV in a professional way.
-            </p>
+
+            {/* Quick Add Buttons */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Quick add context:</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  `I have used ${selectedSkill} in production environments`,
+                  `I learned ${selectedSkill} through online courses`,
+                  `I have professional experience with ${selectedSkill}`,
+                  `I have built personal projects using ${selectedSkill}`,
+                ].map((text, i) => (
+                  <Button
+                    key={i}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    onClick={() => setSkillExplanation((prev) => prev ? `${prev}\n${text}` : text)}
+                  >
+                    + {text.substring(0, 30)}...
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="border-t pt-4">
             <Button variant="outline" onClick={() => setAddSkillDialogOpen(false)} disabled={isEnhancing}>
               Cancel
             </Button>
@@ -658,12 +719,12 @@ export function CVAdaptDialog({
               {isEnhancing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Enhancing...
+                  Enhancing CV...
                 </>
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Add with AI
+                  Enhance CV with this skill
                 </>
               )}
             </Button>
