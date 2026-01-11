@@ -54,6 +54,28 @@ export interface SessionSummary {
   can_resume: boolean;
 }
 
+export interface SessionDetail {
+  session_id: string;
+  job_url: string;
+  status: string;
+  mode: string;
+  current_step: number;
+  total_steps: number;
+  steps_completed: string[];
+  fields_filled: Record<string, string>;
+  fields_remaining: string[];
+  blocker_type?: string;
+  blocker_message?: string;
+  intervention_id?: string;
+  current_url?: string;
+  error?: string;
+  retry_count: number;
+  created_at: string;
+  updated_at: string;
+  paused_at?: string;
+  can_resume: boolean;
+}
+
 export interface StartApplicationV2Request {
   job_url: string;
   user_data: {

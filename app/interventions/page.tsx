@@ -28,6 +28,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { InterventionCard } from "@/components/interventions/InterventionCard";
+import { SessionDetailDialog } from "@/components/interventions/SessionDetailDialog";
 import { useInterventionSocket } from "@/lib/hooks/useInterventionSocket";
 import { interventionsApi } from "@/lib/api/interventions";
 import type { Intervention, SessionSummary } from "@/types/intervention";
@@ -55,6 +56,10 @@ export default function InterventionsPage() {
   const [isLoadingSessions, setIsLoadingSessions] = useState(true);
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(null);
+
+  // State for session detail dialog
+  const [selectedSession, setSelectedSession] = useState<SessionSummary | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Fallback to API if WebSocket fails
   const [interventions, setInterventions] = useState<Intervention[]>([]);
@@ -134,6 +139,19 @@ export default function InterventionsPage() {
     } catch (err) {
       console.error("Failed to delete session:", err);
     }
+  };
+
+  const handleSessionClick = (s: SessionSummary) => {
+    setSelectedSession(s);
+    setIsDetailOpen(true);
+  };
+
+  const handleMarkApplied = (sessionId: string) => {
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.session_id === sessionId ? { ...s, status: "submitted", can_resume: false } : s
+      )
+    );
   };
 
   const handleResumeSession = async (sessionId: string) => {
@@ -344,7 +362,11 @@ export default function InterventionsPage() {
                   <h3 className="text-lg font-semibold mb-3">Resumable Sessions</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {resumableSessions.map((s) => (
-                      <Card key={s.session_id}>
+                      <Card
+                        key={s.session_id}
+                        className="cursor-pointer hover:border-primary/50 transition-colors"
+                        onClick={() => handleSessionClick(s)}
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-sm truncate max-w-[200px]">
@@ -364,7 +386,10 @@ export default function InterventionsPage() {
                           <div className="flex gap-2">
                             <Button
                               size="sm"
-                              onClick={() => handleResumeSession(s.session_id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleResumeSession(s.session_id);
+                              }}
                               disabled={resumingSessionId === s.session_id}
                             >
                               {resumingSessionId === s.session_id ? (
@@ -383,7 +408,10 @@ export default function InterventionsPage() {
                               size="sm"
                               variant="ghost"
                               className="text-red-500"
-                              onClick={() => handleDeleteSession(s.session_id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteSession(s.session_id);
+                              }}
                               disabled={resumingSessionId === s.session_id}
                             >
                               <Trash2 className="h-3 w-3" />
@@ -402,7 +430,11 @@ export default function InterventionsPage() {
                   <h3 className="text-lg font-semibold mb-3">Recent Sessions</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {completedSessions.slice(0, 9).map((s) => (
-                      <Card key={s.session_id} className="opacity-75">
+                      <Card
+                        key={s.session_id}
+                        className="opacity-75 cursor-pointer hover:opacity-100 hover:border-primary/50 transition-all"
+                        onClick={() => handleSessionClick(s)}
+                      >
                         <CardHeader className="pb-2">
                           <div className="flex items-center justify-between">
                             <CardTitle className="text-sm truncate max-w-[150px]">
@@ -435,6 +467,15 @@ export default function InterventionsPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Session Detail Dialog */}
+      <SessionDetailDialog
+        session={selectedSession}
+        open={isDetailOpen}
+        onOpenChange={setIsDetailOpen}
+        onResume={handleResumeSession}
+        onMarkApplied={handleMarkApplied}
+      />
     </div>
   );
 }

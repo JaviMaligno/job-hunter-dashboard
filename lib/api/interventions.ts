@@ -2,6 +2,7 @@ import { apiClient } from "./client";
 import type {
   Intervention,
   SessionSummary,
+  SessionDetail,
   StartApplicationV2Request,
   ApplicationV2Response,
   ResolveInterventionRequest,
@@ -51,8 +52,15 @@ export const interventionsApi = {
   },
 
   // Get session details
-  getSession: async (sessionId: string): Promise<any> => {
-    return apiClient<any>(`/api/applications/v2/sessions/${sessionId}`);
+  getSession: async (sessionId: string): Promise<SessionDetail> => {
+    return apiClient<SessionDetail>(`/api/applications/v2/sessions/${sessionId}`);
+  },
+
+  // Mark session as applied (update job status)
+  markAsApplied: async (sessionId: string): Promise<{ status: string }> => {
+    return apiClient<{ status: string }>(`/api/applications/v2/sessions/${sessionId}/mark-applied`, {
+      method: "POST",
+    });
   },
 
   // Resume a session
