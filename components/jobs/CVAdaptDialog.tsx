@@ -263,6 +263,7 @@ export function CVAdaptDialog({
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
@@ -616,9 +617,10 @@ export function CVAdaptDialog({
           )}
         </DialogFooter>
       </DialogContent>
+    </Dialog>
 
-      {/* Add Skill Dialog */}
-      <Dialog open={addSkillDialogOpen} onOpenChange={setAddSkillDialogOpen}>
+    {/* Add Skill Dialog - must be sibling, not nested */}
+    <Dialog open={addSkillDialogOpen} onOpenChange={setAddSkillDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -731,6 +733,6 @@ The more detail you provide, the better the AI can enhance your CV!`}
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Dialog>
+    </>
   );
 }
