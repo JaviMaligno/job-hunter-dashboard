@@ -1,0 +1,32 @@
+name: Source checks
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: source-checks-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:9
+      AUTH_SECRET: synthetic-ci-secret-not-used-outside-this-build
+      AUTH_TRUST_HOST: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx --no-install tsc --noEmit
+      - run: npm run lint
+      - name: Offline authentication compatibility
+        if: github.event.pull_request.draft == false
+        run: node tests/security-auth-contract.cjs
+      - name: Build
+        if: github.event.pull_request.draft == false
+        run: npm run build
